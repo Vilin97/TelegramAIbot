@@ -20,14 +20,14 @@ async def chatgpt_response(update: Update, context):
                     "content": user_message,
                 }
             ],
-            model="gpt-4o-mini",  # Change this to "gpt-3.5-turbo" if you want the other model
+            model="gpt-4o-mini",
         )
-        reply = response.choices[0].message["content"]
+        reply = response.choices[0].message.content
         await update.message.reply_text(reply)
     except Exception as e:
-        logging.error(f"Error with OpenAI API: {e}")
-        logging.error(f"Raw response (if any): {response}")
-        await update.message.reply_text(f"Sorry, something went wrong. Error:\n{e}")
+        error_message = f"Error with OpenAI API: {e}\nRaw response (if any): {response}"
+        logging.error(error_message)
+        await update.message.reply_text(error_message)
 
 # Log setup
 logging.basicConfig(
