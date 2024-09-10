@@ -1,24 +1,32 @@
 import logging
-import openai
 import os
+from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
-# Set up OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize the OpenAI client
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+)
 
-# Define the bot response to messages using GPT-4
+# Define the bot response using the new OpenAI API
 async def chatgpt_response(update: Update, context):
     user_message = update.message.text
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": user_message},
-        ],
-    )
-    reply = response['choices'][0]['message']['content']
-    await update.message.reply_text(reply)
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_message,
+                }
+            ],
+            model="gpt-4",  # Change this to "gpt-3.5-turbo" if you want the other model
+        )
+        reply = response['choices'][0]['message']['content']
+        await update.message.reply_text(reply)
+    except Exception as e:
+        logging.error(f"Error with OpenAI API: {e}")
+        await update.message.reply_text("Sorry, something went wrong.")
 
 # Log setup
 logging.basicConfig(
@@ -28,10 +36,11 @@ logging.basicConfig(
 
 # Define start command handler
 async def start(update: Update, context):
-    await update.message.reply_text('Hello! I am VasChatGPT, now powered by GPT-4. How can I assist you today?')
+    await update.message.reply_text('Hello! I am VasChatGPT, how can I assist you today?')
 
-# Main function
+# Main function to run the bot
 if __name__ == '__main__':
+    # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
     # Add command and message handlers
