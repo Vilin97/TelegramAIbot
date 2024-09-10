@@ -9,13 +9,13 @@ client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-# Define the bot response using the new OpenAI API for /ai command
-async def ai_command(update: Update, context):
-    # Extract the message text after the /ai command
+# Define the bot response using the new OpenAI API
+async def respond(update: Update, context):
+    # Extract the message text after the command
     user_message = ' '.join(context.args)
     
     if not user_message:
-        await update.message.reply_text("Please provide a prompt after the /ai command.")
+        await update.message.reply_text("Please provide a prompt after the command.")
         return
 
     try:
@@ -26,7 +26,7 @@ async def ai_command(update: Update, context):
                     "content": user_message,
                 }
             ],
-            model="gpt-4o",
+            model="gpt-4o-mini",
         )
         reply = response.choices[0].message.content
         await update.message.reply_text(reply)
@@ -41,18 +41,13 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Define start command handler
-async def start(update: Update, context):
-    await update.message.reply_text('Hello! I am VasChatGPT, how can I assist you today?')
-
 # Main function to run the bot
 if __name__ == '__main__':
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
-    # Add handlers for the /start and /ai commands
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('ai', ai_command))  # The /ai command
+    # Add handlers for the /ai and /ии commands
+    application.add_handler(CommandHandler(['ai', 'ии'], respond))
 
     # Run the bot
     application.run_polling()
