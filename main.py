@@ -20,7 +20,7 @@ async def chatgpt_response(update: Update, context):
                     "content": user_message,
                 }
             ],
-            model="gpt-4o",  # Change this to "gpt-3.5-turbo" if you want the other model
+            model="gpt-4o-mini",  # Change this to "gpt-3.5-turbo" if you want the other model
         )
         reply = response['choices'][0]['message']['content']
         await update.message.reply_text(reply)
