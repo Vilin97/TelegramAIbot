@@ -26,7 +26,7 @@ async def ai_command(update: Update, context):
                     "content": user_message,
                 }
             ],
-            model="gpt-4o-mini",
+            model="gpt-4o",
         )
         reply = response.choices[0].message.content
         await update.message.reply_text(reply)
