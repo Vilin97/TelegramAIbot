@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
@@ -11,7 +12,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 conversation_history = {}
 
 # Max number of messages to keep in conversation history
-MAX_HISTORY_LENGTH = 10
+MAX_HISTORY_LENGTH = 30
+
+# System prompt for the AI
+SYSTEM_PROMPT = {"role": "system", "content": "Меня зовут Компуктер."}
+
+# Function to roll dice based on a string like "1d20" or "3d6"
+def roll_dice(dice_command):
+    try:
+        number, dice_type = map(int, dice_command.lower().split('d'))
+        results = [random.randint(1, dice_type) for _ in range(number)]
+        return results
+    except ValueError:
+        return None
 
 # Define the bot response using the new OpenAI API
 async def respond(update: Update, context):
@@ -20,7 +33,20 @@ async def respond(update: Update, context):
 
     # Initialize the conversation history if it doesn't exist for this chat
     if chat_id not in conversation_history:
-        conversation_history[chat_id] = []
+        conversation_history[chat_id] = [SYSTEM_PROMPT]
+
+    # Handle dice rolling commands
+    if user_message.startswith('/roll'):
+        dice_command = user_message.replace('/roll ', '')
+        dice_results = roll_dice(dice_command)
+        if dice_results is not None:
+            result_str = ', '.join(map(str, dice_results))
+            response_text = f"I rolled {result_str}"
+            await update.message.reply_text(response_text)
+            return
+        else:
+            await update.message.reply_text("Invalid roll command. Please use the format /roll XdY (e.g., /roll 1d20).")
+            return
 
     # Add the user's message to the conversation history
     conversation_history[chat_id].append({
@@ -36,7 +62,7 @@ async def respond(update: Update, context):
         # Send the entire conversation history to OpenAI
         response = client.chat.completions.create(
             messages=conversation_history[chat_id],
-            model="gpt-4o-mini",
+            model="gpt-4o",
         )
         reply = response.choices[0].message.content
 
@@ -79,6 +105,9 @@ if __name__ == '__main__':
 
     # Add a command handler to reset the conversation history
     application.add_handler(CommandHandler(['reset'], reset_history))
+
+    # Add a handler for the /roll command
+    application.add_handler(CommandHandler(['roll'], respond))
 
     # Run the bot
     application.run_polling()
