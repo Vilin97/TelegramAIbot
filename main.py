@@ -47,7 +47,7 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
     # Add handlers for the /ai and /ии commands
-    application.add_handler(CommandHandler(['ai', 'ии'], respond))
+    application.add_handler(CommandHandler(['ai'], respond))
 
     # Run the bot
     application.run_polling()
