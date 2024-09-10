@@ -26,27 +26,30 @@ def roll_dice(dice_command):
     except ValueError:
         return None
 
+# Function to handle rolling dice and passing the result to the AI conversation
+async def roll_and_respond(update: Update, context):
+    dice_command = update.message.text.replace('/roll ', '')
+
+    # Perform the dice roll
+    dice_results = roll_dice(dice_command)
+    if dice_results is not None:
+        result_str = ', '.join(map(str, dice_results))
+        rolled_prompt = f"I rolled {result_str}"
+
+        # Call respond function to continue the conversation with the AI
+        await respond(update, context, user_message=rolled_prompt)
+
+    else:
+        await update.message.reply_text("Invalid roll command. Please use the format /roll XdY (e.g., /roll 1d20).")
+
 # Define the bot response using the new OpenAI API
-async def respond(update: Update, context):
+async def respond(update: Update, context, user_message=None):
     chat_id = update.message.chat_id
-    user_message = update.message.text
+    user_message = user_message or update.message.text
 
     # Initialize the conversation history if it doesn't exist for this chat
     if chat_id not in conversation_history:
         conversation_history[chat_id] = [SYSTEM_PROMPT]
-
-    # Handle dice rolling commands
-    if user_message.startswith('/roll'):
-        dice_command = user_message.replace('/roll ', '')
-        dice_results = roll_dice(dice_command)
-        if dice_results is not None:
-            result_str = ', '.join(map(str, dice_results))
-            response_text = f"I rolled {result_str}"
-            await update.message.reply_text(response_text)
-            return
-        else:
-            await update.message.reply_text("Invalid roll command. Please use the format /roll XdY (e.g., /roll 1d20).")
-            return
 
     # Add the user's message to the conversation history
     conversation_history[chat_id].append({
@@ -86,6 +89,16 @@ async def reset_history(update: Update, context):
     conversation_history.pop(chat_id, None)
     await update.message.reply_text("Conversation history has been reset.")
 
+# Command to show all available commands and their descriptions
+async def show_help(update: Update, context):
+    help_text = (
+        "/ai <message> - Start a conversation with Компуктер\n"
+        "/roll <XdY> - Roll X dice with Y sides (e.g., /roll 1d20 or /roll 3d6)\n"
+        "/reset - Reset the conversation history\n"
+        "/help - Show available commands and their descriptions"
+    )
+    await update.message.reply_text(help_text)
+
 # Log setup
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -106,8 +119,11 @@ if __name__ == '__main__':
     # Add a command handler to reset the conversation history
     application.add_handler(CommandHandler(['reset'], reset_history))
 
+    # Add a command handler for the /help command
+    application.add_handler(CommandHandler(['help'], show_help))
+
     # Add a handler for the /roll command
-    application.add_handler(CommandHandler(['roll'], respond))
+    application.add_handler(CommandHandler(['roll'], roll_and_respond))
 
     # Run the bot
     application.run_polling()
