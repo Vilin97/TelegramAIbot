@@ -10,9 +10,9 @@ GLOBALS = {
     # Max number of messages to keep in conversation history
     "HISTORY": 30,
     # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
-    "MODEL": "gpt-4o-mini",
+    "MODEL": "gpt-4o",
     # print more in debug mode
-    "DEBUG": True,
+    "DEBUG": False,
 }
 ##########################################
 
