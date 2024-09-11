@@ -115,6 +115,10 @@ async def respond(update: Update, context, user_message=None):
     chat_id = update.message.chat_id
     user_message = user_message or update.message.text
 
+    # show help if this is the first message
+    if chat_id not in conversation_history:
+        await update.message.reply_text("Привет! Я Компуктер. Используй /help для списка команд.")
+
     # Handle dice rolling
     roll_message = ""
     if "/roll" in user_message.lower():
