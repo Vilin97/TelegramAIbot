@@ -60,7 +60,7 @@ def roll_dice(user_message):
         number, dice_type = map(int, dice_command.split("d"))
         dice_results = [random.randint(1, dice_type) for _ in range(number)]
         result_str = ", ".join(map(str, dice_results))
-        user_message = f"Выпало {result_str}."
+        user_message = f"Выпало {result_str}. Сумма {sum(dice_results)}."
         return user_message
     except ValueError:
         return None
@@ -166,8 +166,8 @@ if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
-    # Add a message handler to handle replies to bot messages
-    application.add_handler(MessageHandler(filters.TEXT & filters.REPLY, respond))
+    # Add a message handler to handle replies that are not commands
+    application.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond))
 
     # Add handlers for the /ai command
     application.add_handler(CommandHandler(["ai"], respond))
