@@ -169,6 +169,9 @@ if __name__ == "__main__":
     # Add a message handler to handle replies that are not commands
     application.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond))
 
+    # Add a command handler for the /roll command
+    application.add_handler(CommandHandler("roll", respond))
+
     # Add handlers for the /ai command
     application.add_handler(CommandHandler(["ai"], respond))
 
