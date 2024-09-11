@@ -87,8 +87,8 @@ def update_conversation_history(chat_id, user_message):
 
 
 # Function to handle debug information
-async def send_debug_info(update, user_message, context):
-    debug_info = f"DEBUG INFO: Message: {user_message}, Context: {context}"
+async def send_debug_info(chat_id, update, context):
+    debug_info = f"DEBUG INFO: conversation_history={conversation_history[chat_id]}"
     await update.message.reply_text(debug_info)
 
 
@@ -141,7 +141,7 @@ async def respond(update: Update, context, user_message=None):
 
         # Send debug info if applicable
         if GLOBALS["DEBUG"]:
-            await send_debug_info(update, user_message, context)
+            await send_debug_info(chat_id, update, context)
 
     except Exception as e:
         error_message = f"Error with OpenAI API: {e}\nRaw response (if any): {response if 'response' in locals() else 'None'}"
