@@ -154,11 +154,17 @@ async def show_help(update: Update, context):
     help_text = (
         "/ai <message> - Start a conversation with Компуктер\n"
         "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
-        "/settings key=value - Update settings like model or history size (e.g., /settings model=gpt-4o, /settings history=10, /settings debug=true)\n"
+        f"/settings key=value - Update settings like model or history length, e.g. \settings history=50. Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
         "/help - Show available commands and their descriptions"
     )
     await update.message.reply_text(help_text)
 
+# Custom filter to check if there are exactly 2 members (including the bot)
+class FilterTwoMembers(filters.BaseFilter):
+    async def __call__(self, update: Update, context):
+        chat_id = update.message.chat_id
+        chat_members_count = await context.bot.get_chat_member_count(chat_id)
+        return chat_members_count == 2
 
 # Log setup
 logging.basicConfig(
@@ -184,6 +190,9 @@ if __name__ == "__main__":
 
     # Add a command handler for the /help command
     application.add_handler(CommandHandler(["help"], show_help))
+
+    # Handler for messages when there are exactly 2 members
+    two_members_handler = MessageHandler(filters.TEXT & FilterTwoMembers(), respond)
 
     # Run the bot
     application.run_polling()
