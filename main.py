@@ -96,7 +96,7 @@ def update_conversation_history(chat_id, user_message):
 
 # Function to handle debug information
 async def send_debug_info(chat_id, update, context):
-    debug_info = f"DEBUG INFO: conversation_history={conversation_history[chat_id]}"
+    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id]}\nupdate.message={update.message}"
     await update.message.reply_text(debug_info)
 
 
@@ -196,10 +196,16 @@ class FilterTwoMembers(filters.BaseFilter):
 # Custom filter to check if the bot is mentioned
 class FilterBotMention(filters.BaseFilter):
     async def __call__(self, update: Update, context):
-        return any(
-            entity.type == MessageEntity.MENTION and update.message.text[entity.offset:entity.offset + entity.length] == f"@{BOT_USERNAME}"
-            for entity in update.message.entities or []
-        )
+        if not update.message.entities:
+            return False  # If no entities in the message, return False
+
+        # Loop through message entities to check for mentions
+        for entity in update.message.entities:
+            if entity.type == MessageEntity.MENTION:
+                mentioned_username = update.message.text[entity.offset:entity.offset + entity.length]
+                if mentioned_username == f"@{BOT_USERNAME}":
+                    return True
+        return False
 
 
 # Main function to run the bot (updated to include /reset command handler)
