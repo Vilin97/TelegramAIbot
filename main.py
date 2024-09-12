@@ -24,8 +24,12 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Dictionary to store conversation history for each chat
 conversation_history = {}
 
-# System prompt for the AI
-SYSTEM_PROMPT = {"role": "system", "content": "Тебя зовут Компуктер."}
+def load_system_prompt(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return {"role": "system", "content": f.read().strip()}
+
+# Load system prompt from the file
+SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 ##########################################
 
 
