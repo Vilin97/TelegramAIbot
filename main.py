@@ -154,7 +154,7 @@ async def show_help(update: Update, context):
     help_text = (
         "/ai <message> - Start a conversation with Компуктер\n"
         "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
-        f"/settings key=value - Update settings like model or history length, e.g. \settings history=50. Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
+        f"/settings key=value - Update settings like model or history length, e.g. /settings history=50. Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
         "/help - Show available commands and their descriptions"
     )
     await update.message.reply_text(help_text)
