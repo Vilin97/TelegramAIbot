@@ -164,7 +164,8 @@ class FilterTwoMembers(filters.BaseFilter):
     async def __call__(self, update: Update, context):
         chat_id = update.message.chat_id
         chat_members_count = await context.bot.get_chat_member_count(chat_id)
-        return chat_members_count == 2
+        logging.info(f"Chat members count: {chat_members_count}")
+        return chat_members_count <= 2
 
 # Log setup
 logging.basicConfig(
