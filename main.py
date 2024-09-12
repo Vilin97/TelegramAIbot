@@ -24,9 +24,11 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Dictionary to store conversation history for each chat
 conversation_history = {}
 
+
 def load_system_prompt(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return {"role": "system", "content": f.read().strip()}
+
 
 # Load system prompt from the file
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
@@ -58,7 +60,7 @@ async def update_globals(update: Update, context):
 
 
 # Function to handle rolling dice within the user message
-def roll_dice(user_message):    
+def roll_dice(user_message):
     try:
         dice_command = user_message.lower().replace("/roll ", "")
         number, dice_type = map(int, dice_command.split("d"))
@@ -111,8 +113,9 @@ def generate_response(chat_id):
             "content": reply,
         }
     )
-    
+
     return reply, response
+
 
 # Main function to define the bot response
 async def respond(update: Update, context, user_message=None):
@@ -121,7 +124,9 @@ async def respond(update: Update, context, user_message=None):
 
     # show help if this is the first message
     if chat_id not in conversation_history:
-        await update.message.reply_text("Привет! Я Компуктер. Используй /help для списка команд.")
+        await update.message.reply_text(
+            "Привет! Я Компуктер. Используй /help для списка команд."
+        )
 
     # Handle dice rolling
     roll_message = ""
@@ -153,16 +158,6 @@ async def respond(update: Update, context, user_message=None):
         await update.message.reply_text(error_message)
 
 
-# Command to show all available commands and their descriptions
-async def show_help(update: Update, context):
-    help_text = (
-        "/ai <message> - Start a conversation with Компуктер\n"
-        "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
-        f"/settings key=value - Update settings like model or history length, e.g. /settings history=50. Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
-        "/help - Show available commands and their descriptions"
-    )
-    await update.message.reply_text(help_text)
-
 # Custom filter to check if there are exactly 2 members (including the bot)
 class FilterTwoMembers(filters.BaseFilter):
     async def __call__(self, update: Update, context):
@@ -170,18 +165,41 @@ class FilterTwoMembers(filters.BaseFilter):
         chat_members_count = await context.bot.get_chat_member_count(chat_id)
         return chat_members_count <= 2
 
+
 # Log setup
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
-# Main function to run the bot
+
+# Function to handle resetting the conversation history
+async def reset_history(update: Update, context):
+    chat_id = update.message.chat_id
+    conversation_history.pop(chat_id, None)  # Remove the chat history if it exists
+    await update.message.reply_text("Conversation history has been reset.")
+
+
+# Updated help command to include the /reset command
+async def show_help(update: Update, context):
+    help_text = (
+        "/ai <message> - Start a conversation with Компуктер\n"
+        "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
+        f"/settings key=value - Update settings like model or history length  (e.g. /settings history=50). Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
+        "/reset - Reset the conversation history\n"
+        "/help - Show available commands and their descriptions"
+    )
+    await update.message.reply_text(help_text)
+
+
+# Main function to run the bot (updated to include /reset command handler)
 if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
     # Add a message handler to handle replies that are not commands
-    application.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond))
+    application.add_handler(
+        MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond)
+    )
 
     # Add a command handler for the /roll command
     application.add_handler(CommandHandler("roll", respond))
@@ -194,6 +212,9 @@ if __name__ == "__main__":
 
     # Add a command handler for the /help command
     application.add_handler(CommandHandler(["help"], show_help))
+
+    # Add a command handler for the /reset command
+    application.add_handler(CommandHandler(["reset"], reset_history))
 
     # Handler for messages when there are exactly 2 members
     application.add_handler(MessageHandler(filters.TEXT & FilterTwoMembers(), respond))
