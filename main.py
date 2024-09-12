@@ -191,16 +191,20 @@ class FilterTwoMembers(filters.BaseFilter):
         return chat_members_count <= 2
 
 
+
+# Global variable to store the bot's username
+bot_username = None
+
+# Function to initialize the bot username
+async def initialize_bot_username(application):
+    global bot_username
+    bot_username = (await application.bot.get_me()).username
+
 # Custom filter to check if the bot is mentioned
 class FilterBotMention(filters.BaseFilter):
-    def __init__(self, bot_username):
-        self.bot_username = bot_username
-
     async def __call__(self, update: Update, context):
         return any(
-            entity.type == MessageEntity.MENTION
-            and update.message.text[entity.offset : entity.offset + entity.length]
-            == f"@{self.bot_username}"
+            entity.type == MessageEntity.MENTION and update.message.text[entity.offset:entity.offset + entity.length] == f"@{bot_username}"
             for entity in update.message.entities or []
         )
 
@@ -235,9 +239,9 @@ if __name__ == "__main__":
     # Add a message handler to respond when the bot is mentioned
     application.add_handler(
         MessageHandler(
-            filters.TEXT & FilterBotMention(application.bot.username), respond
+            filters.TEXT & FilterBotMention(), respond
         )
     )
 
     # Run the bot
-    application.run_polling()
+    application.run_polling(post_init=initialize_bot_username)
