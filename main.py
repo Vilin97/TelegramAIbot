@@ -32,6 +32,8 @@ def load_system_prompt(file_path):
 
 # Load system prompt from the file
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
+
+BOT_USERNAME = "VasChatGPTBot"
 ##########################################
 
 
@@ -191,20 +193,11 @@ class FilterTwoMembers(filters.BaseFilter):
         return chat_members_count <= 2
 
 
-
-# Global variable to store the bot's username
-bot_username = None
-
-# Function to initialize the bot username
-async def initialize_bot_username(application):
-    global bot_username
-    bot_username = (await application.bot.get_me()).username
-
 # Custom filter to check if the bot is mentioned
 class FilterBotMention(filters.BaseFilter):
     async def __call__(self, update: Update, context):
         return any(
-            entity.type == MessageEntity.MENTION and update.message.text[entity.offset:entity.offset + entity.length] == f"@{bot_username}"
+            entity.type == MessageEntity.MENTION and update.message.text[entity.offset:entity.offset + entity.length] == f"@{BOT_USERNAME}"
             for entity in update.message.entities or []
         )
 
@@ -244,4 +237,4 @@ if __name__ == "__main__":
     )
 
     # Run the bot
-    application.run_polling(post_init=initialize_bot_username)
+    application.run_polling()
