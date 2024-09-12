@@ -6,6 +6,7 @@ from telegram import Update, MessageEntity
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 #### globals that the user can change ####
+# TODO: these should be specific to each chat_id
 GLOBALS = {
     # Max number of messages to keep in conversation history
     "HISTORY": 30,
@@ -96,7 +97,7 @@ def update_conversation_history(chat_id, user_message):
 
 # Function to handle debug information
 async def send_debug_info(chat_id, update, context):
-    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id][1:]}\nupdate.message={update.message}\nglobal_debug={global_debug}"
+    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id][1:]}\nupdate.message={update.message}"
     await update.message.reply_text(debug_info)
 
 
@@ -192,24 +193,6 @@ class FilterTwoMembers(filters.BaseFilter):
         chat_members_count = await context.bot.get_chat_member_count(chat_id)
         return chat_members_count <= 2
 
-global_debug = {}
-
-# Custom filter to check if the bot is mentioned
-class FilterBotMention(filters.BaseFilter):
-    async def __call__(self, update: Update, context):
-        if not update.message.entities:
-            return False  # If no entities in the message, return False
-
-        # Loop through message entities to check for mentions
-        for entity in update.message.entities:
-            global_debug["entity.type"] = entity.type
-            if entity.type == MessageEntity.MENTION:
-                mentioned_username = update.message.text[entity.offset:entity.offset + entity.length]
-                global_debug["mentioned_username"] = mentioned_username
-                if mentioned_username == f"@{BOT_USERNAME}":
-                    return True
-        return False
-
 
 # Main function to run the bot (updated to include /reset command handler)
 if __name__ == "__main__":
@@ -231,19 +214,14 @@ if __name__ == "__main__":
     # Add a command handler for the /reset command
     application.add_handler(CommandHandler(["reset"], reset_history))
 
-    # Add a message handler to handle replies that are not commands
-    application.add_handler(
-        MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond)
-    )
+    # Add a message handler to handle replies
+    application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
+
     # Handler for messages when there are exactly 2 members
-    application.add_handler(MessageHandler(filters.TEXT & FilterTwoMembers(), respond))
+    application.add_handler(MessageHandler(FilterTwoMembers(), respond))
 
     # Add a message handler to respond when the bot is mentioned
-    application.add_handler(
-        MessageHandler(
-            filters.TEXT & FilterBotMention(), respond
-        )
-    )
+    application.add_handler(MessageHandler(filters.Mention(BOT_USERNAME), respond))
 
     # Run the bot
     application.run_polling()
