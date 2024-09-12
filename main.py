@@ -200,26 +200,26 @@ if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
-    # # Add a command handler for the /roll command
-    # application.add_handler(CommandHandler("roll", respond))
+    # Add a command handler for the /roll command
+    application.add_handler(CommandHandler("roll", respond))
 
-    # # Add handlers for the /ai command
-    # application.add_handler(CommandHandler(["ai"], respond))
+    # Add handlers for the /ai command
+    application.add_handler(CommandHandler(["ai"], respond))
 
-    # # Add a command handler for the /settings command
-    # application.add_handler(CommandHandler(["settings"], update_globals))
+    # Add a command handler for the /settings command
+    application.add_handler(CommandHandler(["settings"], update_globals))
 
-    # # Add a command handler for the /help command
-    # application.add_handler(CommandHandler(["help"], show_help))
+    # Add a command handler for the /help command
+    application.add_handler(CommandHandler(["help"], show_help))
 
-    # # Add a command handler for the /reset command
-    # application.add_handler(CommandHandler(["reset"], reset_history))
+    # Add a command handler for the /reset command
+    application.add_handler(CommandHandler(["reset"], reset_history))
 
-    # # Add a message handler to handle replies
-    # application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
+    # Add a message handler to handle replies
+    application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
 
-    # # Handler for messages when there are exactly 2 members
-    # application.add_handler(MessageHandler(FilterTwoMembers(), respond))
+    # Handler for messages when there are exactly 2 members
+    application.add_handler(MessageHandler(FilterTwoMembers(), respond))
 
     # Add a message handler to respond when the bot is mentioned
     application.add_handler(MessageHandler(filters.Mention(BOT_USERNAME), respond))
