@@ -2,7 +2,7 @@ import logging
 import os
 import random
 from openai import OpenAI
-from telegram import Update
+from telegram import Update, MessageEntity
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 #### globals that the user can change ####
@@ -158,14 +158,6 @@ async def respond(update: Update, context, user_message=None):
         await update.message.reply_text(error_message)
 
 
-# Custom filter to check if there are exactly 2 members (including the bot)
-class FilterTwoMembers(filters.BaseFilter):
-    async def __call__(self, update: Update, context):
-        chat_id = update.message.chat_id
-        chat_members_count = await context.bot.get_chat_member_count(chat_id)
-        return chat_members_count <= 2
-
-
 # Log setup
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -182,24 +174,41 @@ async def reset_history(update: Update, context):
 # Updated help command to include the /reset command
 async def show_help(update: Update, context):
     help_text = (
+        "/help - Show available commands and their descriptions"
         "/ai <message> - Start a conversation with Компуктер\n"
-        "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
         f"/settings key=value - Update settings like model or history length  (e.g. /settings history=50). Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
         "/reset - Reset the conversation history\n"
-        "/help - Show available commands and their descriptions"
+        "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
     )
     await update.message.reply_text(help_text)
+
+
+# Custom filter to check if there are exactly 2 members (including the bot)
+class FilterTwoMembers(filters.BaseFilter):
+    async def __call__(self, update: Update, context):
+        chat_id = update.message.chat_id
+        chat_members_count = await context.bot.get_chat_member_count(chat_id)
+        return chat_members_count <= 2
+
+
+# Custom filter to check if the bot is mentioned
+class FilterBotMention(filters.BaseFilter):
+    def __init__(self, bot_username):
+        self.bot_username = bot_username
+
+    async def __call__(self, update: Update, context):
+        return any(
+            entity.type == MessageEntity.MENTION
+            and update.message.text[entity.offset : entity.offset + entity.length]
+            == f"@{self.bot_username}"
+            for entity in update.message.entities or []
+        )
 
 
 # Main function to run the bot (updated to include /reset command handler)
 if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
-
-    # Add a message handler to handle replies that are not commands
-    application.add_handler(
-        MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond)
-    )
 
     # Add a command handler for the /roll command
     application.add_handler(CommandHandler("roll", respond))
@@ -216,8 +225,19 @@ if __name__ == "__main__":
     # Add a command handler for the /reset command
     application.add_handler(CommandHandler(["reset"], reset_history))
 
+    # Add a message handler to handle replies that are not commands
+    application.add_handler(
+        MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, respond)
+    )
     # Handler for messages when there are exactly 2 members
     application.add_handler(MessageHandler(filters.TEXT & FilterTwoMembers(), respond))
+
+    # Add a message handler to respond when the bot is mentioned
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT & FilterBotMention(application.bot.username), respond
+        )
+    )
 
     # Run the bot
     application.run_polling()
