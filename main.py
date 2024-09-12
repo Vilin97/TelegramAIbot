@@ -6,14 +6,15 @@ from telegram import Update, MessageEntity
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 #### globals that the user can change ####
-# TODO: these should be specific to each chat_id
 GLOBALS = {
-    # Max number of messages to keep in conversation history
-    "HISTORY": 30,
-    # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
-    "MODEL": "gpt-4o",
-    # print more in debug mode
-    "DEBUG": False,
+    "DEFAULT": {
+        # Max number of messages to keep in conversation history
+        "HISTORY": 30,
+        # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
+        "MODEL": "gpt-4o",
+        # print more in debug mode
+        "DEBUG": False,
+    }
 }
 ##########################################
 
@@ -40,20 +41,24 @@ BOT_USERNAME = "VasChatGPTBot"
 
 # Function to handle commands and settings
 async def update_globals(update: Update, context):
+    chat_id = update.message.chat_id
     command = update.message.text.replace("/settings ", "")
     try:
         key, value = command.split("=")
         key = key.strip().upper()
         value = value.strip().lower()
 
-        if key in GLOBALS:
+        if chat_id not in GLOBALS:
+            GLOBALS[chat_id] = GLOBALS["DEFAULT"].copy()
+
+        if key in GLOBALS[chat_id]:
             if key == "HISTORY":
-                GLOBALS[key] = int(value)
+                GLOBALS[chat_id][key] = int(value)
             elif key == "MODEL":
-                GLOBALS[key] = value
+                GLOBALS[chat_id][key] = value
             elif key == "DEBUG":
-                GLOBALS[key] = value == "true"
-            await update.message.reply_text(f"{key} has been updated to {GLOBALS[key]}")
+                GLOBALS[chat_id][key] = value == "true"
+            await update.message.reply_text(f"{key} has been updated to {GLOBALS[chat_id][key]}")
         else:
             await update.message.reply_text(f"Unknown setting: {key}")
     except ValueError:
@@ -79,6 +84,7 @@ def roll_dice(user_message):
 def update_conversation_history(chat_id, user_message):
     if chat_id not in conversation_history:
         conversation_history[chat_id] = [SYSTEM_PROMPT]
+        GLOBALS[chat_id] = GLOBALS["DEFAULT"].copy()
 
     # Add the user's message to the conversation history
     conversation_history[chat_id].append(
@@ -89,9 +95,9 @@ def update_conversation_history(chat_id, user_message):
     )
 
     # Limit the history length
-    if len(conversation_history[chat_id]) > GLOBALS["HISTORY"]:
+    if len(conversation_history[chat_id]) > GLOBALS[chat_id]["HISTORY"]:
         conversation_history[chat_id] = conversation_history[chat_id][
-            -GLOBALS["HISTORY"] :
+            -GLOBALS[chat_id]["HISTORY"] :
         ]
 
 
@@ -105,7 +111,7 @@ def generate_response(chat_id):
     # Send the entire conversation history to OpenAI
     response = client.chat.completions.create(
         messages=conversation_history[chat_id],
-        model=GLOBALS["MODEL"],
+        model=GLOBALS[chat_id]["MODEL"],
     )
     reply = response.choices[0].message.content
 
@@ -124,12 +130,6 @@ def generate_response(chat_id):
 async def respond(update: Update, context, user_message=None):
     chat_id = update.message.chat_id
     user_message = user_message or update.message.text
-
-    # show help if this is the first message
-    if chat_id not in conversation_history:
-        await update.message.reply_text(
-            "Привет! Я Компуктер. Используй /help для списка команд."
-        )
 
     # Handle dice rolling
     roll_message = ""
@@ -152,7 +152,7 @@ async def respond(update: Update, context, user_message=None):
         await update.message.reply_text(roll_message + "\n\n" + reply)
 
         # Send debug info if applicable
-        if GLOBALS["DEBUG"]:
+        if GLOBALS[chat_id]["DEBUG"]:
             await send_debug_info(chat_id, update, context)
 
     except Exception as e:
@@ -176,10 +176,11 @@ async def reset_history(update: Update, context):
 
 # Updated help command to include the /reset command
 async def show_help(update: Update, context):
+    chat_id = update.message.chat_id
     help_text = (
         "/help - Show available commands and their descriptions"
         "/ai <message> - Start a conversation with Компуктер\n"
-        f"/settings key=value - Update settings like model or history length  (e.g. /settings history=50). Current settings are model={GLOBALS['MODEL']}, history={GLOBALS['HISTORY']}, debug={GLOBALS['DEBUG']})\n"
+        f"/settings key=value - Update settings like model or history length  (e.g. /settings history=50). Current settings are model={GLOBALS[chat_id]['MODEL']}, history={GLOBALS[chat_id]['HISTORY']}, debug={GLOBALS[chat_id]['DEBUG']})\n"
         "/reset - Reset the conversation history\n"
         "/roll XdY - Roll X dice with Y sides (e.g., /roll 1d20)\n"
     )
