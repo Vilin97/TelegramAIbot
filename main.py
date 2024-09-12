@@ -164,7 +164,6 @@ class FilterTwoMembers(filters.BaseFilter):
     async def __call__(self, update: Update, context):
         chat_id = update.message.chat_id
         chat_members_count = await context.bot.get_chat_member_count(chat_id)
-        logging.info(f"Chat members count: {chat_members_count}")
         return chat_members_count <= 2
 
 # Log setup
@@ -193,7 +192,7 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler(["help"], show_help))
 
     # Handler for messages when there are exactly 2 members
-    two_members_handler = MessageHandler(filters.TEXT & FilterTwoMembers(), respond)
+    application.add_handler(MessageHandler(filters.TEXT & FilterTwoMembers(), respond))
 
     # Run the bot
     application.run_polling()
