@@ -96,7 +96,7 @@ def update_conversation_history(chat_id, user_message):
 
 # Function to handle debug information
 async def send_debug_info(chat_id, update, context):
-    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id]}\nupdate.message={update.message}"
+    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id][1:]}\nupdate.message={update.message}\nglobal_debug={global_debug}"
     await update.message.reply_text(debug_info)
 
 
@@ -192,6 +192,7 @@ class FilterTwoMembers(filters.BaseFilter):
         chat_members_count = await context.bot.get_chat_member_count(chat_id)
         return chat_members_count <= 2
 
+global_debug = {}
 
 # Custom filter to check if the bot is mentioned
 class FilterBotMention(filters.BaseFilter):
@@ -201,8 +202,10 @@ class FilterBotMention(filters.BaseFilter):
 
         # Loop through message entities to check for mentions
         for entity in update.message.entities:
+            global_debug["entity.type"] = entity.type
             if entity.type == MessageEntity.MENTION:
                 mentioned_username = update.message.text[entity.offset:entity.offset + entity.length]
+                global_debug["mentioned_username"] = mentioned_username
                 if mentioned_username == f"@{BOT_USERNAME}":
                     return True
         return False
