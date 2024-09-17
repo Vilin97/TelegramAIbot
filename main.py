@@ -98,7 +98,7 @@ async def respond(update: Update, context):
 
         update_conversation_history(chat_id, reply, role="assistant")
 
-        await update.message.reply_text(user_message + "\n\n" + reply)
+        await update.message.reply_text(reply)
 
         if GLOBALS[chat_id]["DEBUG"]:
             await send_debug_info(update, context)
