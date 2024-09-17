@@ -89,9 +89,10 @@ def generate_response(chat_id):
 # Main function to define the bot response
 async def respond(update: Update, context):
     chat_id = update.message.chat_id
-    user_message = update.message.text
+    user = update.message.from_user
+    message = f"{user.first_name} (@{user.username}): {update.message.text}"
 
-    update_conversation_history(chat_id, user_message, role='user')
+    update_conversation_history(chat_id, message, role="user")
 
     try:
         reply, response = generate_response(chat_id)
@@ -107,7 +108,6 @@ async def respond(update: Update, context):
         error_message = f"Error with OpenAI API: {e}\nRaw response (if any): {response}"
         logging.error(error_message)
         await update.message.reply_text(error_message)
-
 
 
 # Main function to run the bot (updated to include /reset command handler)
