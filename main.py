@@ -30,7 +30,7 @@ def load_system_prompt(file_path):
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 BOT_USERNAME = "@VasChatGPTBot"
-SYSTEM_PROMPT = helper_functions.load_system_prompt("system_prompt.txt")
+SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 conversation_history = {}
 ##########################################
 
@@ -95,7 +95,7 @@ async def respond(update: Update, context):
 
     try:
         reply, response = generate_response(chat_id)
-        
+
         update_conversation_history(chat_id, reply, role="assistant")
 
         await update.message.reply_text(user_message + "\n\n" + reply)
