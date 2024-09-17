@@ -1,5 +1,8 @@
 from telegram import Update
 
+def prepend_username(user, message):
+    return f"{user.first_name} (@{user.username}): {message}"
+
 async def update_globals_(update: Update, context, globals):
     chat_id = update.message.chat_id
     command = update.message.text.replace("/settings ", "")

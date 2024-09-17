@@ -5,7 +5,9 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 import helper_functions
+import database as db
 
+# TODO: move these globals to bot_data so it's available in `context`. Also, save them in the database.
 #### globals that the user can change ####
 GLOBALS = {
     "DEFAULT": {
@@ -31,7 +33,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 BOT_USERNAME = "@VasChatGPTBot"
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
-conversation_history = {}
 ##########################################
 
 logging.basicConfig(
@@ -44,77 +45,69 @@ async def update_globals(update: Update, context):
 
 
 async def send_debug_info(update, context):
-    await helper_functions.send_debug_info_(update, context, conversation_history)
+    await helper_functions.send_debug_info_(update, context, db.conversation_history(update, context))
 
 
 async def show_help(update: Update, context):
     await helper_functions.show_help_(update, context, GLOBALS)
 
-
+# TODO: Wipe the chat history from the database. This will require a new database function.
 async def reset_history(update: Update, context):
     await helper_functions.reset_history_(update, context, conversation_history)
 
 
-def update_conversation_history(chat_id, message, role):
-    if chat_id not in conversation_history:
-        conversation_history[chat_id] = [SYSTEM_PROMPT]
-        GLOBALS[chat_id] = GLOBALS["DEFAULT"].copy()
+async def generate_response(update, context):
+    chat_id = update.message.chat_id
+    conversation_history = db.conversation_history(update, context)
 
-    # Add the message to the conversation history
-    conversation_history[chat_id].append(
-        {
-            "role": role,
-            "content": message,
-        }
-    )
-
-    # Limit the history length
-    if len(conversation_history[chat_id]) > GLOBALS[chat_id]["HISTORY"]:
-        conversation_history[chat_id] = conversation_history[chat_id][
-            -GLOBALS[chat_id]["HISTORY"] :
-        ]
-
-
-def generate_response(chat_id):
     # Send the entire conversation history to OpenAI
-    response = client.chat.completions.create(
-        messages=conversation_history[chat_id],
+    response = await client.chat.completions.create(
+        messages=conversation_history,
         model=GLOBALS[chat_id]["MODEL"],
     )
     reply = response.choices[0].message.content
 
-    return reply, response
+    return reply
 
 
 # Main function to define the bot response
 async def respond(update: Update, context):
     chat_id = update.message.chat_id
     user = update.message.from_user
-    message = f"{user.first_name} (@{user.username}): {update.message.text}"
+    message = helper_functions.prepend_username(user, update.message.text)
 
-    update_conversation_history(chat_id, message, role="user")
+    await db.save_message_to_db(update, context, "user", message)
 
     try:
-        reply, response = generate_response(chat_id)
-
-        update_conversation_history(chat_id, reply, role="assistant")
+        reply = await generate_response(chat_id)
 
         await update.message.reply_text(reply)
+
+        bot_user = context.bot
+        bot_message = helper_functions.prepend_username(bot_user, reply)
+        await db.save_message_to_db(update, context, "bot", bot_message)
 
         if GLOBALS[chat_id]["DEBUG"]:
             await send_debug_info(update, context)
 
     except Exception as e:
-        error_message = f"Error with OpenAI API: {e}\nRaw response (if any): {response}"
+        error_message = f"Error with OpenAI API: {e}"
         logging.error(error_message)
         await update.message.reply_text(error_message)
 
 
-# Main function to run the bot (updated to include /reset command handler)
+async def on_startup(application):
+    # Initialize the database connection pool
+    pool = await db.init_db()
+    # Store the pool in the bot's context
+    application.bot_data["db_pool"] = pool
+
+
 if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
+    # Add handlers
     application.add_handler(CommandHandler(["ai"], respond))
     application.add_handler(CommandHandler(["settings"], update_globals))
     application.add_handler(CommandHandler(["help"], show_help))
@@ -122,6 +115,9 @@ if __name__ == "__main__":
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE, respond))
     application.add_handler(MessageHandler(filters.Mention(BOT_USERNAME), respond))
+
+    # Set up post-init hook for database connection
+    application.post_init(on_startup)
 
     # Run the bot
     application.run_polling()
