@@ -9,8 +9,9 @@ import database as db
 
 # Run `heroku config:get TOKEN_NAME` to get environment variables
 # put them in .env in the format `TOKEN_NAME=value`
-load_dotenv()
-
+if os.environ.get('ENV') != 'production':
+    load_dotenv()
+    
 # TODO: move these globals to bot_data so it's available in `context`. Also, save them in the database.
 #### globals that the user can change ####
 GLOBALS = {
