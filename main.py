@@ -39,6 +39,7 @@ BOT_USERNAME = "@VasChatGPTBot"
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 ##########################################
 
+# `heroku logs --tail` to see the logs
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
 )

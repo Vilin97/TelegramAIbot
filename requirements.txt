@@ -1,3 +1,4 @@
 asyncpg
 openai
+dotenv
 python-telegram-bot>=21.5
