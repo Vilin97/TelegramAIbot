@@ -3,7 +3,7 @@ from telegram import Update
 def prepend_username(user, message):
     return f"{user.first_name} (@{user.username}): {message}"
 
-async def update_globals_(update: Update, context, globals):
+async def update_globals(update: Update, context, globals):
     chat_id = update.message.chat_id
     command = update.message.text.replace("/settings ", "")
     try:
@@ -32,12 +32,12 @@ async def update_globals_(update: Update, context, globals):
         )
 
 
-async def send_debug_info_(update, context, conversation_history):
+async def send_debug_info(update, context, conversation_history):
     chat_id = update.message.chat_id
     debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id][1:]}\nupdate.message={update.message}"
     await update.message.reply_text(debug_info)
 
-async def show_help_(update: Update, context, globals):
+async def show_help(update: Update, context, globals):
     chat_id = update.message.chat_id
     help_text = (
         "/help - Show available commands and their descriptions"
@@ -46,9 +46,3 @@ async def show_help_(update: Update, context, globals):
         "/reset - Reset the conversation history\n"
     )
     await update.message.reply_text(help_text)
-
-# Function to handle resetting the conversation history
-async def reset_history_(update: Update, context, conversation_history):
-    chat_id = update.message.chat_id
-    conversation_history.pop(chat_id, None)  # Remove the chat history if it exists
-    await update.message.reply_text("Conversation history has been reset.")
