@@ -11,7 +11,7 @@ import database as db
 # put them in .env in the format `TOKEN_NAME=value`
 if os.environ.get('ENV') != 'production':
     load_dotenv()
-    
+
 # TODO: move these globals to bot_data so it's available in `context`. Also, save them in the database.
 #### globals that the user can change ####
 GLOBALS = {
@@ -93,8 +93,7 @@ async def respond(update, context):
 
         await update.message.reply_text(reply)
 
-        bot_message = helper_functions.prepend_username(context.bot, reply)
-        await db.save_message_to_db(update, context, "assistant", bot_message)
+        await db.save_message_to_db(update, context, "assistant", reply)
 
         if GLOBALS[chat_id]["DEBUG"]:
             await send_debug_info(update, context)
