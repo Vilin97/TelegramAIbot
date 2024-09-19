@@ -64,9 +64,6 @@ async def update_settings(update, context):
         setting_name = setting_name.strip()
         new_value = new_value.strip()
 
-        print('setting_name:', setting_name)
-        print('new_value:', new_value)
-
         async with pool.acquire() as conn:
             # Insert or update the setting in the JSONB field
             await conn.execute(
