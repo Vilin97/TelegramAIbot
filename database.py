@@ -62,7 +62,10 @@ async def update_settings(update, context):
     try:
         setting_name, new_value = command.split("=")
         setting_name = setting_name.strip()
-        new_value = new_value.strip().lower()
+        new_value = new_value.strip()
+
+        print('setting_name:', setting_name)
+        print('new_value:', new_value)
 
         async with pool.acquire() as conn:
             # Insert or update the setting in the JSONB field
@@ -75,7 +78,7 @@ async def update_settings(update, context):
                 """,
                 chat_id,
                 [setting_name],
-                str(new_value),
+                f'"{new_value}"',
             )
 
         await update.message.reply_text(f"{setting_name} has been updated to {new_value}")
@@ -86,7 +89,7 @@ async def update_settings(update, context):
         )
 
 async def get_setting(update, context, setting_name, defaults):
-    
+    """Get a setting from the database or use the default value."""
     chat_id = update.message.chat_id
     pool = context.bot_data["db_pool"]
     
@@ -103,6 +106,6 @@ async def get_setting(update, context, setting_name, defaults):
     
     # If the setting is not found in the DB, use the default value
     if result is None:
-        result = defaults.get(setting_name.upper())
+        result = defaults[setting_name]
 
     return result

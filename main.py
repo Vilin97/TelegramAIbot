@@ -62,7 +62,7 @@ async def get_setting(update, context, setting_name):
 async def generate_response(update, context):
 
     conversation_history = await db.conversation_history(update, context)
-    history = await get_setting(update, context, "history")
+    history = int(await get_setting(update, context, "history"))
     model = await get_setting(update, context, "model")
 
     response = client.chat.completions.create(
