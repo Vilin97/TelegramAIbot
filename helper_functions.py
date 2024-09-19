@@ -3,11 +3,6 @@ from telegram import Update
 def prepend_username(user, message):
     return f"{user.first_name} (@{user.username}): {message}"
 
-async def send_debug_info(update, context, conversation_history):
-    chat_id = update.message.chat_id
-    debug_info = f"DEBUG INFO: \nconversation_history={conversation_history[chat_id][1:]}\nupdate.message={update.message}"
-    await update.message.reply_text(debug_info)
-
 async def show_help(update: Update, context):
     help_text = (
         "/help - Show available commands and their descriptions"

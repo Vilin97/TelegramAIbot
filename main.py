@@ -15,8 +15,6 @@ DEFAULTS = {
     "history": 30,
     # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
     "model": "gpt-4o",
-    # print more in debug mode
-    "debug": False,
 }
 
 
@@ -39,12 +37,6 @@ logging.basicConfig(
 
 async def update_settings(update, context):
     await db.update_settings(update, context)
-
-
-async def send_debug_info(update, context):
-    await helper_functions.send_debug_info(
-        update, context, db.conversation_history(update, context)
-    )
 
 
 async def show_help(update, context):
@@ -87,9 +79,6 @@ async def respond(update, context):
         await update.message.reply_text(reply)
 
         await db.save_message_to_db(update, context, "assistant", reply)
-
-        if await get_setting(update, context, "debug"):
-            await send_debug_info(update, context)
 
     except Exception as e:
         error_message = f"Error: {e}"
