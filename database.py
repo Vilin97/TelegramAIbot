@@ -1,9 +1,6 @@
 import asyncpg
 import os
 
-# `psql DATABASE_URL` to connect to the database
-# \d chat_history to see the table schema
-
 
 async def init_db():
     DATABASE_URL = os.getenv("DATABASE_URL")

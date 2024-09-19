@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 import helper_functions
 import database as db
 
-# Run `heroku config:get TOKEN_NAME` to get environment variables
-# put them in .env in the format `TOKEN_NAME=value`
 if os.environ.get('ENV') != 'production':
     load_dotenv()
 
@@ -33,14 +31,12 @@ def load_system_prompt(file_path):
 
 
 #### Other globals #######################
-# Initialize the OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 BOT_USERNAME = "@VasChatGPTBot"
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 ##########################################
 
-# `heroku logs --tail` to see the logs
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
 )
