@@ -11,10 +11,6 @@ async def init_db():
 async def save_message_to_db(update, context, role, message):
     assert role in ["user", "assistant"]
 
-    if "db_pool" not in context.bot_data:
-        pool = await init_db()
-        context.bot_data["db_pool"] = pool
-
     pool = context.bot_data["db_pool"]
     chat_id = update.message.chat_id
     user = update.message.from_user if role == "user" else context.bot
@@ -46,9 +42,6 @@ async def conversation_history(update, context):
 
 
 async def reset_history(update, context):
-    if "db_pool" not in context.bot_data:
-        pool = await init_db()
-        context.bot_data["db_pool"] = pool
 
     pool = context.bot_data["db_pool"]
     chat_id = update.message.chat_id
@@ -59,3 +52,57 @@ async def reset_history(update, context):
         await conn.execute(query, chat_id)
 
     await update.message.reply_text("Conversation history has been reset.")
+
+
+async def update_settings(update, context):
+    chat_id = update.message.chat_id
+    pool = context.bot_data["db_pool"]
+    command = update.message.text.replace("/settings ", "")
+    
+    try:
+        setting_name, new_value = command.split("=")
+        setting_name = setting_name.strip()
+        new_value = new_value.strip().lower()
+
+        async with pool.acquire() as conn:
+            # Insert or update the setting in the JSONB field
+            await conn.execute(
+                """
+                INSERT INTO chat_settings (chat_id, settings)
+                VALUES ($1, jsonb_set('{}', $2, $3::jsonb))
+                ON CONFLICT (chat_id) 
+                DO UPDATE SET settings = jsonb_set(chat_settings.settings, $2, $3::jsonb);
+                """,
+                chat_id,
+                [setting_name],
+                str(new_value),
+            )
+
+        await update.message.reply_text(f"{setting_name} has been updated to {new_value}")
+    
+    except ValueError:
+        await update.message.reply_text(
+            "Invalid settings command. Use the format /settings key=value."
+        )
+
+async def get_setting(update, context, setting_name, defaults):
+    
+    chat_id = update.message.chat_id
+    pool = context.bot_data["db_pool"]
+    
+    async with pool.acquire() as conn:
+        result = await conn.fetchval(
+            """
+            SELECT settings->>$2 
+            FROM chat_settings 
+            WHERE chat_id = $1
+            """,
+            chat_id,
+            setting_name
+        )
+    
+    # If the setting is not found in the DB, use the default value
+    if result is None:
+        result = defaults.get(setting_name.upper())
+
+    return result

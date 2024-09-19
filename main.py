@@ -7,22 +7,17 @@ from dotenv import load_dotenv
 import helper_functions
 import database as db
 
-if os.environ.get('ENV') != 'production':
+if os.environ.get("ENV") != "production":
     load_dotenv()
 
-# TODO: move these globals to bot_data so it's available in `context`. Also, save them in the database.
-#### globals that the user can change ####
-GLOBALS = {
-    "DEFAULT": {
-        # Max number of messages to keep in conversation history
-        "HISTORY": 30,
-        # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
-        "MODEL": "gpt-4o",
-        # print more in debug mode
-        "DEBUG": False,
-    }
+DEFAULTS = {
+    # Max number of messages to keep in conversation history
+    "history": 30,
+    # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
+    "model": "gpt-4o",
+    # print more in debug mode
+    "debug": False,
 }
-##########################################
 
 
 def load_system_prompt(file_path):
@@ -42,8 +37,8 @@ logging.basicConfig(
 )
 
 
-async def update_globals(update, context):
-    await helper_functions.update_globals(update, context, GLOBALS)
+async def update_settings(update, context):
+    await db.update_settings(update, context)
 
 
 async def send_debug_info(update, context):
@@ -53,23 +48,26 @@ async def send_debug_info(update, context):
 
 
 async def show_help(update, context):
-    await helper_functions.show_help(update, context, GLOBALS)
+    await helper_functions.show_help(update, context)
 
 
 async def reset_history(update, context):
     await db.reset_history(update, context)
 
 
-async def generate_response(update, context):
-    chat_id = update.message.chat_id
-    conversation_history = await db.conversation_history(update, context)
+async def get_setting(update, context, setting_name):
+    return await db.get_setting(update, context, setting_name, DEFAULTS)
 
-    if chat_id not in GLOBALS:
-        GLOBALS[chat_id] = GLOBALS["DEFAULT"].copy()
+
+async def generate_response(update, context):
+
+    conversation_history = await db.conversation_history(update, context)
+    history = await get_setting(update, context, "history")
+    model = await get_setting(update, context, "model")
 
     response = client.chat.completions.create(
-        messages=conversation_history[-GLOBALS[chat_id]["HISTORY"] :],
-        model=GLOBALS[chat_id]["MODEL"],
+        messages=conversation_history[-history:],
+        model=model,
     )
     reply = response.choices[0].message.content
 
@@ -78,7 +76,6 @@ async def generate_response(update, context):
 
 # Main function to define the bot response
 async def respond(update, context):
-    chat_id = update.message.chat_id
     user = update.message.from_user
     message = helper_functions.prepend_username(user, update.message.text)
 
@@ -91,7 +88,7 @@ async def respond(update, context):
 
         await db.save_message_to_db(update, context, "assistant", reply)
 
-        if GLOBALS[chat_id]["DEBUG"]:
+        if await get_setting(update, context, "debug"):
             await send_debug_info(update, context)
 
     except Exception as e:
@@ -100,13 +97,32 @@ async def respond(update, context):
         await update.message.reply_text(error_message)
 
 
+async def post_init(application):
+    pool = await db.init_db()
+    application.bot_data["db_pool"] = pool
+
+    await application.bot.set_my_commands(
+        [
+            ("help", "Show available commands and their descriptions"),
+            ("ai", "Summon AI"),
+            ("reset", "Reset the conversation history"),
+            ("settings", "Update settings like model=gpt-4o and history=30"),
+        ]
+    )
+
+
 if __name__ == "__main__":
     # Initialize the bot with the Telegram token
-    application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
+    application = (
+        ApplicationBuilder()
+        .token(os.getenv("TELEGRAM_TOKEN"))
+        .post_init(post_init)
+        .build()
+    )
 
     # Add handlers
     application.add_handler(CommandHandler(["ai"], respond))
-    application.add_handler(CommandHandler(["settings"], update_globals))
+    application.add_handler(CommandHandler(["settings"], update_settings))
     application.add_handler(CommandHandler(["help"], show_help))
     application.add_handler(CommandHandler(["reset"], reset_history))
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
