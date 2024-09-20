@@ -101,9 +101,7 @@ async def respond_with_image(update, context):
         image_url = response.data[0].url
         revised_prompt = response.data[0].revised_prompt
 
-        print(revised_prompt)
-
-        await update.message.reply_photo(image_url)
+        await update.message.reply_photo(image_url, caption=revised_prompt)
 
     except Exception as e:
         error_message = f"Error: {e}"
