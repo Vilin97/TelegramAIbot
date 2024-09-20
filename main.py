@@ -11,7 +11,7 @@ if os.environ.get("ENV") != "production":
     load_dotenv()
 
 
-def load_system_prompt(file_path):
+def load_prompt(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read().strip()
 
@@ -21,7 +21,8 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 DEFAULTS = {"history": 30, "model": "gpt-4o"}
 BOT_USERNAME = "@VasChatGPTBot"
-SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
+SYSTEM_PROMPT = load_prompt("system_prompt.txt")
+REWORD_PROMPT = load_prompt("reword_prompt.txt")
 ##########################################
 
 logging.basicConfig(
@@ -57,29 +58,22 @@ async def generate_response(update, context):
     return reply
 
 
-# Main function to define the bot response
 async def respond(update, context):
     user = update.message.from_user
     prompt = update.message.text.replace(BOT_USERNAME, "").strip()
     prompt = helper_functions.prepend_username(user, prompt)
-
     try:
         await db.save_message_to_db(update, context, "user", prompt)
         reply = await generate_response(update, context)
         await update.message.reply_text(reply)
         await db.save_message_to_db(update, context, "assistant", reply)
-
     except Exception as e:
         error_message = f"Error: {e}"
         logging.exception(error_message)
         await update.message.reply_text(error_message)
 
 
-async def respond_with_image(update, context):
-    prompt = (
-        update.message.text.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
-    )
-
+async def imagine_(update, context, prompt):
     try:
         response = client.images.generate(
             prompt=prompt,
@@ -87,16 +81,34 @@ async def respond_with_image(update, context):
             size="1024x1024",  # higher quality costs more
             quality="standard",  # "hd" costs twice more
         )
-
         image_url = response.data[0].url
         revised_prompt = response.data[0].revised_prompt
-
         await update.message.reply_photo(image_url, caption=revised_prompt)
-
     except Exception as e:
         error_message = f"Error: {e}"
         logging.exception(error_message)
         await update.message.reply_text(error_message)
+
+
+async def imagine(update, context):
+    prompt = update.message.text
+    prompt = prompt.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
+    await imagine_(update, context, prompt)
+
+
+async def reword_and_imagine(update, context):
+    original_message_text = update.message.reply_to_message.text
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": REWORD_PROMPT},
+            {"role": "user", "content": original_message_text},
+        ],
+        model=DEFAULTS["model"],
+    )
+    # prevent further rewording to avoid losing the original meaning
+    prompt = "DO NOT add any detail, just use this prompt AS-IS:" + response.choices[0].message.content
+
+    await imagine_(update, context, prompt)
 
 
 async def settings(update, context):
@@ -115,8 +127,8 @@ async def post_init(application):
 
     await application.bot.set_my_commands(
         [
-            ("reset", "Reset the conversation history"),
             ("imagine", "Generate an image, e.g. /imagine a panda in space"),
+            ("reset", "Reset the conversation history"),
             ("help", "Show available commands and their descriptions"),
         ]
     )
@@ -132,11 +144,14 @@ if __name__ == "__main__":
     )
 
     # Add handlers
-    application.add_handler(CommandHandler(["imagine"], respond_with_image))
+    reply_imagine_filter = filters.REPLY & filters.Text(["/imagine", f"/imagine{BOT_USERNAME}"])
+    application.add_handler(MessageHandler(reply_imagine_filter, reword_and_imagine))
+    application.add_handler(CommandHandler(["imagine"], imagine, filters=~filters.REPLY))
     application.add_handler(CommandHandler(["ai"], respond))
     application.add_handler(CommandHandler(["settings"], settings))
     application.add_handler(CommandHandler(["help"], show_help))
     application.add_handler(CommandHandler(["reset"], reset_history))
+
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE, respond))
     application.add_handler(MessageHandler(filters.Mention(BOT_USERNAME), respond))
