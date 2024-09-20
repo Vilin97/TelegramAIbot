@@ -35,8 +35,19 @@ logging.basicConfig(
 )
 
 
-async def update_settings(update, context):
-    await db.update_settings(update, context)
+async def settings(update, context):
+    # Strip whitespace and check if the command is empty after /settings
+    if update.message.text.strip() == "/settings":
+        model = await get_setting(update, context, "model", DEFAULTS)
+        history = await get_setting(update, context, "history", DEFAULTS)
+
+        # Reply with the current settings
+        await update.message.reply_text(
+            f"Current model={model}, history={history}"
+        )
+    else:
+        # Otherwise, call the update settings function as normal
+        await db.update_settings(update, context)
 
 
 async def show_help(update, context):
@@ -88,14 +99,16 @@ async def respond(update, context):
 
 
 async def respond_with_image(update, context):
-    prompt = update.message.text.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
+    prompt = (
+        update.message.text.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
+    )
 
     try:
         response = client.images.generate(
             prompt=prompt,
-            model="dall-e-3",   # dall-e-2 works worse
-            size="1024x1024",   # higher quality costs more
-            quality="standard", # "hd" costs twice more 
+            model="dall-e-3",  # dall-e-2 works worse
+            size="1024x1024",  # higher quality costs more
+            quality="standard",  # "hd" costs twice more
         )
 
         image_url = response.data[0].url
@@ -107,6 +120,7 @@ async def respond_with_image(update, context):
         error_message = f"Error: {e}"
         logging.exception(error_message)
         await update.message.reply_text(error_message)
+
 
 async def post_init(application):
     pool = await db.init_db()
@@ -135,7 +149,7 @@ if __name__ == "__main__":
     # Add handlers
     application.add_handler(CommandHandler(["imagine"], respond_with_image))
     application.add_handler(CommandHandler(["ai"], respond))
-    application.add_handler(CommandHandler(["settings"], update_settings))
+    application.add_handler(CommandHandler(["settings"], settings))
     application.add_handler(CommandHandler(["help"], show_help))
     application.add_handler(CommandHandler(["reset"], reset_history))
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, respond))
