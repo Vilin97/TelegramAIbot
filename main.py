@@ -69,9 +69,10 @@ async def generate_response(update, context):
 # Main function to define the bot response
 async def respond(update, context):
     user = update.message.from_user
-    message = helper_functions.prepend_username(user, update.message.text)
+    prompt = update.message.text.replace(BOT_USERNAME, "").strip()
+    prompt = helper_functions.prepend_username(user, prompt)
 
-    await db.save_message_to_db(update, context, "user", message)
+    await db.save_message_to_db(update, context, "user", prompt)
 
     try:
         reply = await generate_response(update, context)
@@ -86,16 +87,40 @@ async def respond(update, context):
         await update.message.reply_text(error_message)
 
 
+async def respond_with_image(update, context):
+    prompt = update.message.text.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
+
+    try:
+        response = client.images.generate(
+            prompt=prompt,
+            model="dall-e-3",   # dall-e-2 works worse
+            size="1024x1024",   # higher quality costs more
+            quality="standard", # "hd" costs twice more 
+        )
+
+        image_url = response.data[0].url
+        revised_prompt = response.data[0].revised_prompt
+
+        print(revised_prompt)
+
+        await update.message.reply_photo(image_url)
+
+    except Exception as e:
+        error_message = f"Error: {e}"
+        logging.exception(error_message)
+        await update.message.reply_text(error_message)
+
 async def post_init(application):
     pool = await db.init_db()
     application.bot_data["db_pool"] = pool
 
     await application.bot.set_my_commands(
         [
-            ("help", "Show available commands and their descriptions"),
-            ("ai", "Summon AI"),
+            ("imagine", "Generate an image, e.g. /imagine a panda in space"),
             ("reset", "Reset the conversation history"),
-            ("settings", "Update settings like model=gpt-4o and history=30"),
+            # ("help", "Show available commands and their descriptions"),
+            # ("ai", "Summon AI"),
+            # ("settings", "Update settings like model=gpt-4o and history=30"),
         ]
     )
 
@@ -110,6 +135,7 @@ if __name__ == "__main__":
     )
 
     # Add handlers
+    application.add_handler(CommandHandler(["imagine"], respond_with_image))
     application.add_handler(CommandHandler(["ai"], respond))
     application.add_handler(CommandHandler(["settings"], update_settings))
     application.add_handler(CommandHandler(["help"], show_help))
