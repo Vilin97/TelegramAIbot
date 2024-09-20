@@ -9,7 +9,7 @@ async def init_db():
 
 
 async def save_message_to_db(update, context, role, message):
-    assert role in ["user", "assistant"]
+    assert role in ["system", "assistant", "user"]
 
     pool = context.bot_data["db_pool"]
     chat_id = update.message.chat_id

@@ -10,22 +10,16 @@ import database as db
 if os.environ.get("ENV") != "production":
     load_dotenv()
 
-DEFAULTS = {
-    # Max number of messages to keep in conversation history
-    "history": 30,
-    # OpenAI API model to use: "gpt-4o" or "gpt-4o-mini"
-    "model": "gpt-4o",
-}
-
 
 def load_system_prompt(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
-        return {"role": "system", "content": f.read().strip()}
+        return f.read().strip()
 
 
-#### Other globals #######################
+############### GLOBALS ##################
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+DEFAULTS = {"history": 30, "model": "gpt-4o"}
 BOT_USERNAME = "@VasChatGPTBot"
 SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 ##########################################
@@ -33,21 +27,6 @@ SYSTEM_PROMPT = load_system_prompt("system_prompt.txt")
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
 )
-
-
-async def settings(update, context):
-    # Strip whitespace and check if the command is empty after /settings
-    if update.message.text.strip() == "/settings":
-        model = await get_setting(update, context, "model", DEFAULTS)
-        history = await get_setting(update, context, "history", DEFAULTS)
-
-        # Reply with the current settings
-        await update.message.reply_text(
-            f"Current model={model}, history={history}"
-        )
-    else:
-        # Otherwise, call the update settings function as normal
-        await db.update_settings(update, context)
 
 
 async def show_help(update, context):
@@ -63,8 +42,9 @@ async def get_setting(update, context, setting_name):
 
 
 async def generate_response(update, context):
+    conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    conversation_history += await db.conversation_history(update, context)
 
-    conversation_history = await db.conversation_history(update, context)
     history = int(await get_setting(update, context, "history"))
     model = await get_setting(update, context, "model")
 
@@ -83,13 +63,10 @@ async def respond(update, context):
     prompt = update.message.text.replace(BOT_USERNAME, "").strip()
     prompt = helper_functions.prepend_username(user, prompt)
 
-    await db.save_message_to_db(update, context, "user", prompt)
-
     try:
+        await db.save_message_to_db(update, context, "user", prompt)
         reply = await generate_response(update, context)
-
         await update.message.reply_text(reply)
-
         await db.save_message_to_db(update, context, "assistant", reply)
 
     except Exception as e:
@@ -122,17 +99,25 @@ async def respond_with_image(update, context):
         await update.message.reply_text(error_message)
 
 
+async def settings(update, context):
+    # if "/settings" called without args, show current settings
+    if update.message.text.strip() == "/settings":
+        model = await get_setting(update, context, "model")
+        history = await get_setting(update, context, "history")
+        await update.message.reply_text(f"Current model={model}, history={history}")
+    else:
+        await db.update_settings(update, context)
+
+
 async def post_init(application):
     pool = await db.init_db()
     application.bot_data["db_pool"] = pool
 
     await application.bot.set_my_commands(
         [
-            ("imagine", "Generate an image, e.g. /imagine a panda in space"),
             ("reset", "Reset the conversation history"),
-            # ("help", "Show available commands and their descriptions"),
-            # ("ai", "Summon AI"),
-            # ("settings", "Update settings like model=gpt-4o and history=30"),
+            ("imagine", "Generate an image, e.g. /imagine a panda in space"),
+            ("help", "Show available commands and their descriptions"),
         ]
     )
 
