@@ -7,6 +7,7 @@ import database as db
 if os.environ.get("ENV") != "production":
     load_dotenv()
 
+
 def load_prompt(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read().strip()
@@ -16,24 +17,55 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = load_prompt("system_prompt.txt")
 REWORD_PROMPT = load_prompt("reword_prompt.txt")
+SUMMARY_PROMPT = load_prompt("summary_prompt.txt")
+
 
 async def generate_response(update, context):
-    conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
-    conversation_history += await db.conversation_history(update, context)
-
     history = int(await db.get_setting(update, context, "history"))
     model = await db.get_setting(update, context, "model")
 
+    conversation_history = await db.conversation_history(update, context)
+    prompt = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if len(conversation_history) > history:
+        summary = await summarize(update, context)
+        print(summary)
+        prompt.append({"role": "assistant", "content": summary})
+    prompt += conversation_history[-history:]
+
     response = client.chat.completions.create(
-        messages=conversation_history[-history:],
+        messages=prompt,
         model=model,
     )
     content = response.choices[0].message.content
     tokens = response.usage.total_tokens
     return content, tokens
 
+
+async def summarize(update, context):
+    history = int(await db.get_setting(update, context, "history"))
+    pre_history = (await db.conversation_history(update, context))[:-history]
+
+    pre_history_messages = [
+        ("Bot: " if message["role"] == "assistant" else "") + message["content"]
+        for message in pre_history
+    ]
+    pre_history_messages = "\n".join(pre_history_messages)
+
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": SUMMARY_PROMPT},
+            {"role": "user", "content": pre_history_messages},
+        ],
+        model="gpt-4o-mini",  # ~30x cheaper than gpt-4o
+    )
+    summary = response.choices[0].message.content
+    return f"THIS IS THE SUMMARY OF THE PRECEDING EVENTS: \n{summary}"
+
+
 async def imagine(update, context, prompt):
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_photo")
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id, action="upload_photo"
+    )
     response = client.images.generate(
         prompt=prompt,
         model="dall-e-3",  # dall-e-2 works worse

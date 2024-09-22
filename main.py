@@ -12,7 +12,7 @@ from utils import handle_errors
 
 
 ############### GLOBALS ##################
-DEFAULTS = {"history": 30, "model": "gpt-4o"}
+DEFAULTS = {"history": 50, "model": "gpt-4o-2024-08-06"} # twice cheaper than gpt-4o
 BOT_USERNAME = "@VasChatGPTBot"
 ##########################################
 
