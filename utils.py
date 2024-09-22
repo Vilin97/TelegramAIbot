@@ -32,5 +32,6 @@ async def show_help(update: Update, context):
         "/ai <message> - Start a conversation with Компуктер\n"
         f"/settings key=value - Update model or history length (e.g. /settings model=gpt-4o /settings history=30). /settings without key and value will print the current settings.\n"
         "/reset - Reset the conversation history\n"
+        "/roll XdY - Roll X dice with Y sides (e.g. /roll 2d6)\n"
     )
     await update.message.reply_text(help_text)
