@@ -6,6 +6,7 @@ from telegram.ext.filters import REPLY, COMMAND, ChatType, Mention, Text
 
 import ai
 import database as db
+import dnd
 import utils
 from utils import handle_errors
 
@@ -106,6 +107,7 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("settings", settings))
     application.add_handler(CommandHandler("help", show_help))
     application.add_handler(CommandHandler("reset", reset_history))
+    application.add_handler(CommandHandler("roll", dnd.roll))
 
     # respond if being mentioned OR replied to OR in private chat
     reply_filter = Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE
