@@ -85,8 +85,9 @@ async def update_settings(update, context):
             "Invalid settings command. Use the format /settings key=value."
         )
 
-async def get_setting(update, context, setting_name, defaults):
+async def get_setting(update, context, setting_name):
     """Get a setting from the database or use the default value."""
+    defaults = context.bot_data["defaults"]
     chat_id = update.message.chat_id
     pool = context.bot_data["db_pool"]
     
