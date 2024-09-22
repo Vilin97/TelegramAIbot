@@ -28,7 +28,7 @@ async def generate_response(update, context):
     prompt = [{"role": "system", "content": SYSTEM_PROMPT}]
     if len(conversation_history) > history:
         summary = await summarize(update, context)
-        print(summary)
+        # print(summary)
         prompt.append({"role": "assistant", "content": summary})
     prompt += conversation_history[-history:]
 
@@ -59,7 +59,7 @@ async def summarize(update, context):
         model="gpt-4o-mini",  # ~30x cheaper than gpt-4o
     )
     summary = response.choices[0].message.content
-    return f"THIS IS THE SUMMARY OF THE PRECEDING EVENTS: \n{summary}"
+    return summary
 
 
 async def imagine(update, context, prompt):
