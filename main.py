@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from dotenv import load_dotenv
 
 import helper_functions
+from helper_functions import handle_errors
 import database as db
 
 if os.environ.get("ENV") != "production":
@@ -30,19 +31,22 @@ logging.basicConfig(
 )
 
 
+@handle_errors
 async def show_help(update, context):
     await helper_functions.show_help(update, context)
 
 
+@handle_errors
 async def reset_history(update, context):
     await db.reset_history(update, context)
 
 
+@handle_errors
 async def get_setting(update, context, setting_name):
     return await db.get_setting(update, context, setting_name, DEFAULTS)
 
 
-async def generate_response(update, context):
+async def generate_response_(update, context):
     conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
     conversation_history += await db.conversation_history(update, context)
 
@@ -58,44 +62,40 @@ async def generate_response(update, context):
     return reply
 
 
+@handle_errors
 async def respond(update, context):
     user = update.message.from_user
     prompt = update.message.text.replace(BOT_USERNAME, "").strip()
     prompt = helper_functions.prepend_username(user, prompt)
-    try:
-        await db.save_message_to_db(update, context, "user", prompt)
-        reply = await generate_response(update, context)
-        await update.message.reply_text(reply)
-        await db.save_message_to_db(update, context, "assistant", reply)
-    except Exception as e:
-        error_message = f"Error: {e}"
-        logging.exception(error_message)
-        await update.message.reply_text(error_message)
+    await db.save_message_to_db(update, context, "user", prompt)
+    reply = await generate_response_(update, context)
+    await update.message.reply_text(reply)
+    await db.save_message_to_db(update, context, "assistant", reply)
 
 
 async def imagine_(update, context, prompt):
-    try:
-        response = client.images.generate(
-            prompt=prompt,
-            model="dall-e-3",  # dall-e-2 works worse
-            size="1024x1024",  # higher quality costs more
-            quality="standard",  # "hd" costs twice more
-        )
-        image_url = response.data[0].url
-        revised_prompt = response.data[0].revised_prompt
-        await update.message.reply_photo(image_url, caption=revised_prompt)
-    except Exception as e:
-        error_message = f"Error: {e}"
-        logging.exception(error_message)
-        await update.message.reply_text(error_message)
+    response = client.images.generate(
+        prompt=prompt,
+        model="dall-e-3",  # dall-e-2 works worse
+        size="1024x1024",  # higher quality costs more
+        quality="standard",  # "hd" costs twice more
+    )
+    image_url = response.data[0].url
+    revised_prompt = response.data[0].revised_prompt
+    await update.message.reply_photo(image_url, caption=revised_prompt)
 
 
+@handle_errors
 async def imagine(update, context):
     prompt = update.message.text
     prompt = prompt.replace("/imagine", "").replace(BOT_USERNAME, "").strip()
-    await imagine_(update, context, prompt)
+    if prompt:
+        await imagine_(update, context, prompt)
+    else:
+        await update.message.reply_text("Please provide a prompt for the image.")
 
 
+@handle_errors
 async def reword_and_imagine(update, context):
     original_message_text = update.message.reply_to_message.text
     response = client.chat.completions.create(
@@ -106,11 +106,15 @@ async def reword_and_imagine(update, context):
         model=DEFAULTS["model"],
     )
     # prevent further rewording to avoid losing the original meaning
-    prompt = "DO NOT add any detail, just use this prompt AS-IS:" + response.choices[0].message.content
+    prompt = (
+        "DO NOT add any detail, just use this prompt AS-IS: "
+        + response.choices[0].message.content
+    )
 
     await imagine_(update, context, prompt)
 
 
+@handle_errors
 async def settings(update, context):
     # if "/settings" called without args, show current settings
     if update.message.text.strip() == "/settings":
@@ -121,6 +125,7 @@ async def settings(update, context):
         await db.update_settings(update, context)
 
 
+@handle_errors
 async def post_init(application):
     pool = await db.init_db()
     application.bot_data["db_pool"] = pool
@@ -144,9 +149,11 @@ if __name__ == "__main__":
     )
 
     # Add handlers
-    reply_imagine_filter = filters.REPLY & filters.Text(["/imagine", f"/imagine{BOT_USERNAME}"])
+    reply_imagine_filter = filters.REPLY & filters.Text(
+        ["/imagine", f"/imagine{BOT_USERNAME}"]
+    )
     application.add_handler(MessageHandler(reply_imagine_filter, reword_and_imagine))
-    application.add_handler(CommandHandler(["imagine"], imagine, filters=~filters.REPLY))
+    application.add_handler(CommandHandler(["imagine"], imagine))
     application.add_handler(CommandHandler(["ai"], respond))
     application.add_handler(CommandHandler(["settings"], settings))
     application.add_handler(CommandHandler(["help"], show_help))

@@ -1,4 +1,22 @@
 from telegram import Update
+import logging
+from functools import wraps
+import traceback
+
+def handle_errors(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            error_message = (
+                f"Error occurred in {func.__name__}.\n"
+                f"Args: {args}, Kwargs: {kwargs}\n"
+                f"Exception: {e}\n"
+                f"Stack trace: {traceback.format_exc()}"
+            )
+            logging.error(error_message)
+    return wrapper
 
 def prepend_username(user, message):
     return f"{user.first_name} (@{user.username}): {message}"
