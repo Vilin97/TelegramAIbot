@@ -82,7 +82,7 @@ async def post_init(application):
     )
 
 
-class BotReplyFilter(filters.BaseFilter):
+class BotReplyFilter(filters.MessageFilter):
     def filter(self, message):
         return (
             message.reply_to_message
@@ -100,17 +100,16 @@ if __name__ == "__main__":
     )
 
     # Add handlers
-    reply_imagine_filter = REPLY & Text(["/imagine", f"/imagine{BOT_USERNAME}"])
-    application.add_handler(MessageHandler(reply_imagine_filter, reword_and_imagine))
-    application.add_handler(CommandHandler(["imagine"], imagine))
-    application.add_handler(CommandHandler(["ai"], respond))
-    application.add_handler(CommandHandler(["settings"], settings))
-    application.add_handler(CommandHandler(["help"], show_help))
-    application.add_handler(CommandHandler(["reset"], reset_history))
+    application.add_handler(CommandHandler("imagine", reword_and_imagine, filters=REPLY))
+    application.add_handler(CommandHandler("imagine", imagine))
+    application.add_handler(CommandHandler("ai", respond))
+    application.add_handler(CommandHandler("settings", settings))
+    application.add_handler(CommandHandler("help", show_help))
+    application.add_handler(CommandHandler("reset", reset_history))
 
-    application.add_handler(MessageHandler(BotReplyFilter() & ~COMMAND, respond))
-    application.add_handler(MessageHandler(ChatType.PRIVATE, respond))
-    application.add_handler(MessageHandler(Mention(BOT_USERNAME), respond))
+    # respond if being mentioned OR replied to OR in private chat
+    reply_filter = Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE
+    application.add_handler(MessageHandler(reply_filter, respond))
 
     # Run the bot
     application.run_polling()

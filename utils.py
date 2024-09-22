@@ -10,13 +10,7 @@ def handle_errors(func):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            error_message = (
-                f"Error occurred in {func.__name__}.\n"
-                f"Args: {args}, Kwargs: {kwargs}\n"
-                f"Exception: {e}\n"
-                f"Stack trace: {traceback.format_exc()}"
-            )
-            logging.error(error_message)
+            logging.exception(e)
     return wrapper
 
 
