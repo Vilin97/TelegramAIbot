@@ -82,6 +82,7 @@ async def post_init(application):
             ("roll", "Roll dice, e.g. /roll 2d6."),
             ("reset", "Reset the conversation history."),
             ("help", "Show available commands and their descriptions."),
+            ("settings", "Update model or history length, e.g. /settings history=30."),
         ]
     )
 
