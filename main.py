@@ -75,9 +75,9 @@ async def post_init(application):
 
     await application.bot.set_my_commands(
         [
-            ("imagine", "Generate an image, e.g. /imagine a panda in space"),
-            ("reset", "Reset the conversation history"),
-            ("help", "Show available commands and their descriptions"),
+            ("imagine", "Generate an image, e.g. /imagine a panda in space. Takes ~15 seconds."),
+            ("reset", "Reset the conversation history."),
+            ("help", "Show available commands and their descriptions."),
         ]
     )
 

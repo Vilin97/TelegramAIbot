@@ -33,6 +33,7 @@ async def generate_response(update, context):
     return reply
 
 async def imagine(update, context, prompt):
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_photo")
     response = client.images.generate(
         prompt=prompt,
         model="dall-e-3",  # dall-e-2 works worse
