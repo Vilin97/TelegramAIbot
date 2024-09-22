@@ -28,9 +28,9 @@ async def generate_response(update, context):
         messages=conversation_history[-history:],
         model=model,
     )
-    reply = response.choices[0].message.content
-
-    return reply
+    content = response.choices[0].message.content
+    tokens = response.usage.total_tokens
+    return content, tokens
 
 async def imagine(update, context, prompt):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_photo")

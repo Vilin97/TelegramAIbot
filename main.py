@@ -37,9 +37,9 @@ async def respond(update, context):
     prompt = utils.prepend_username(update.message.from_user, prompt)
 
     await db.save_message_to_db(update, context, "user", prompt)
-    reply = await ai.generate_response(update, context)
-    await update.message.reply_text(reply)
-    await db.save_message_to_db(update, context, "assistant", reply)
+    content, tokens = await ai.generate_response(update, context)
+    await update.message.reply_text(content + f"\n({tokens} tokens)")
+    await db.save_message_to_db(update, context, "assistant", content)
 
 
 @handle_errors
@@ -63,7 +63,9 @@ async def settings(update, context):
     if update.message.text.strip() == "/settings":
         model = await db.get_setting(update, context, "model")
         history = await db.get_setting(update, context, "history")
-        await update.message.reply_text(f"Current model={model}, history={history}")
+        conversation_history = await db.conversation_history(update, context)
+        hisory_length = len(conversation_history)
+        await update.message.reply_text(f"model={model}, history={history} ({hisory_length} messages total).")
     else:
         await db.update_settings(update, context)
 
@@ -76,7 +78,7 @@ async def post_init(application):
 
     await application.bot.set_my_commands(
         [
-            ("imagine", "Generate an image, e.g. /imagine a panda in space. Takes ~15 seconds."),
+            ("imagine", "Generate an image, e.g. /imagine panda. Takes ~15 seconds."),
             ("roll", "Roll dice, e.g. /roll 2d6."),
             ("reset", "Reset the conversation history."),
             ("help", "Show available commands and their descriptions."),
@@ -102,9 +104,10 @@ if __name__ == "__main__":
     )
 
     # Add handlers
-    application.add_handler(CommandHandler("imagine", reword_and_imagine, filters=REPLY))
+    application.add_handler(
+        CommandHandler("imagine", reword_and_imagine, filters=REPLY)
+    )
     application.add_handler(CommandHandler("imagine", imagine))
-    application.add_handler(CommandHandler("ai", respond))
     application.add_handler(CommandHandler("settings", settings))
     application.add_handler(CommandHandler("help", show_help))
     application.add_handler(CommandHandler("reset", reset_history))
