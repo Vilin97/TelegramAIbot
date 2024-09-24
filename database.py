@@ -1,5 +1,8 @@
+"""Functions to interact with the database."""
+
 import asyncpg
 import os
+import json
 
 
 async def init_db():
@@ -21,7 +24,15 @@ async def save_message_to_db(update, context, role, message, properties={}):
     """
 
     async with pool.acquire() as conn:
-        await conn.execute(query, user.id, user.username, chat_id, message, role, properties)
+        await conn.execute(
+            query,
+            user.id,
+            user.username,
+            chat_id,
+            message,
+            role,
+            json.dumps(properties),
+        )
 
 
 async def conversation_history(update, context):
@@ -58,7 +69,7 @@ async def update_settings(update, context):
     chat_id = update.message.chat_id
     pool = context.bot_data["db_pool"]
     command = update.message.text.replace("/settings ", "")
-    
+
     try:
         setting_name, new_value = command.split("=")
         setting_name = setting_name.strip()
@@ -78,19 +89,22 @@ async def update_settings(update, context):
                 f'"{new_value}"',
             )
 
-        await update.message.reply_text(f"{setting_name} has been updated to {new_value}")
-    
+        await update.message.reply_text(
+            f"{setting_name} has been updated to {new_value}"
+        )
+
     except ValueError:
         await update.message.reply_text(
             "Invalid settings command. Use the format /settings key=value."
         )
+
 
 async def get_setting(update, context, setting_name):
     """Get a setting from the database or use the default value."""
     defaults = context.bot_data["defaults"]
     chat_id = update.message.chat_id
     pool = context.bot_data["db_pool"]
-    
+
     async with pool.acquire() as conn:
         result = await conn.fetchval(
             """
@@ -99,9 +113,9 @@ async def get_setting(update, context, setting_name):
             WHERE chat_id = $1
             """,
             chat_id,
-            setting_name
+            setting_name,
         )
-    
+
     # If the setting is not found in the DB, use the default value
     if result is None:
         result = defaults[setting_name]
