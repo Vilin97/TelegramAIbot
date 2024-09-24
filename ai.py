@@ -38,6 +38,7 @@ async def build_prompt(update, context):
     return prompt
 
 async def generate_response(update, context):
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     model = await db.get_setting(update, context, "model")
     prompt = await build_prompt(update, context)
     response = client.chat.completions.create(
