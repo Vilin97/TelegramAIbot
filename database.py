@@ -32,7 +32,8 @@ async def save_message_to_db(update, context, role, message, properties={}):
             chat_id,
             message,
             role,
-            json.dumps(properties),
+            json.dumps(properties), 
+            message_id
         )
 
 
