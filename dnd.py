@@ -1,3 +1,5 @@
+"""DnD-specific commands for the bot."""
+
 import random
 
 async def roll(update, context) -> None:

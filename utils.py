@@ -1,7 +1,8 @@
+"""Utility functions for the bot."""
+
 from telegram import Update
 import logging
 from functools import wraps
-import traceback
 import re
 
 def handle_errors(func):
