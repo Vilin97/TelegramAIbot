@@ -8,7 +8,8 @@ if os.environ.get("ENV") != "production":
     load_dotenv()
 
 
-def load_prompt(file_path):
+def load_prompt(file_name):
+    file_path = os.path.join("prompts", file_name)
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read().strip()
 

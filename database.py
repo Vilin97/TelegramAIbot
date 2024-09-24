@@ -8,7 +8,7 @@ async def init_db():
     return pool
 
 
-async def save_message_to_db(update, context, role, message):
+async def save_message_to_db(update, context, role, message, properties={}):
     assert role in ["system", "assistant", "user"]
 
     pool = context.bot_data["db_pool"]
@@ -16,12 +16,12 @@ async def save_message_to_db(update, context, role, message):
     user = update.message.from_user if role == "user" else context.bot
 
     query = """
-        INSERT INTO chat_history (user_id, user_name, chat_id, message, role)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO chat_history (user_id, user_name, chat_id, message, role, properties)
+        VALUES ($1, $2, $3, $4, $5, $6)
     """
 
     async with pool.acquire() as conn:
-        await conn.execute(query, user.id, user.username, chat_id, message, role)
+        await conn.execute(query, user.id, user.username, chat_id, message, role, properties)
 
 
 async def conversation_history(update, context):
