@@ -63,18 +63,25 @@ async def summarize(update, context):
 
 
 async def imagine(update, context, prompt):
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id, action="upload_photo"
-    )
-    response = client.images.generate(
-        prompt=prompt,
-        model="dall-e-3",  # dall-e-2 works worse
-        size="1024x1024",  # higher quality costs more
-        quality="standard",  # "hd" costs twice more
-    )
-    image_url = response.data[0].url
-    revised_prompt = response.data[0].revised_prompt
-    await update.message.reply_photo(image_url, caption=revised_prompt)
+    chat_id = update.effective_chat.id
+    bot = context.bot
+
+    generating = await update.message.reply_text("Генерирую изображение...")
+    try:
+        await bot.send_chat_action(chat_id=chat_id, action="upload_photo")
+        response = client.images.generate(
+            prompt=prompt,
+            model="dall-e-3",  # dall-e-2 works worse
+            size="1024x1024",  # higher quality costs more
+            quality="standard",  # "hd" costs twice more
+        )
+        image_url = response.data[0].url
+        revised_prompt = response.data[0].revised_prompt
+        await update.message.reply_photo(image_url, caption=revised_prompt)
+    except Exception as e:
+        await update.message.reply_text("Я не смог сгенерировать изображение.")
+    finally:
+        await bot.delete_message(chat_id=chat_id, message_id=generating.message_id)
 
 
 async def reword(update, context):
