@@ -17,10 +17,11 @@ async def save_message_to_db(update, context, role, message, properties={}):
     pool = context.bot_data["db_pool"]
     chat_id = update.message.chat_id
     user = update.message.from_user if role == "user" else context.bot
+    message_id = update.message.message_id
 
     query = """
-        INSERT INTO chat_history (user_id, user_name, chat_id, message, role, properties)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO chat_history (user_id, user_name, chat_id, message, role, properties, message_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7);
     """
 
     async with pool.acquire() as conn:
