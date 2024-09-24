@@ -11,17 +11,18 @@ async def init_db():
     return pool
 
 
-async def save_message_to_db(update, context, role, message, properties={}):
+async def save_message(context, message, role, properties={}):
     assert role in ["system", "assistant", "user"]
 
     pool = context.bot_data["db_pool"]
-    chat_id = update.message.chat_id
-    user = update.message.from_user if role == "user" else context.bot
-    message_id = update.message.message_id
+    chat_id = message.chat_id
+    user = message.from_user if role == "user" else context.bot
+    message_id = message.message_id
+    text = message.text
 
     query = """
         INSERT INTO chat_history (user_id, user_name, chat_id, message, role, properties, message_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7);
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
     """
 
     async with pool.acquire() as conn:
@@ -30,12 +31,43 @@ async def save_message_to_db(update, context, role, message, properties={}):
             user.id,
             user.username,
             chat_id,
-            message,
+            text,
             role,
-            json.dumps(properties), 
-            message_id
+            json.dumps(properties),
+            message_id,
         )
 
+
+async def save_message_properties(context, message, new_properties):
+    pool = context.bot_data["db_pool"]
+    chat_id = message.chat_id
+    message_id = message.message_id
+    
+    query = """
+        UPDATE chat_history
+        SET properties = $1
+        WHERE chat_id = $2 AND message_id = $3
+    """
+
+    async with pool.acquire() as conn:
+        await conn.execute(query, json.dumps(new_properties), chat_id, message_id)
+
+
+async def messages_with_property(update, context, property_name, property_value):
+
+    pool = context.bot_data["db_pool"]
+    chat_id = update.message.chat_id
+
+    query = """
+        SELECT *
+        FROM chat_history
+        WHERE chat_id = $1 AND properties->>$2 = $3
+        ORDER BY timestamp ASC
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, chat_id, property_name, property_value)
+
+    return [{"role": row["role"], "content": row["message"]} for row in rows]
 
 async def conversation_history(update, context):
 

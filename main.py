@@ -2,7 +2,7 @@ import logging
 import os
 
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
-from telegram.ext.filters import REPLY, COMMAND, ChatType, Mention, Text
+from telegram.ext.filters import TEXT, REPLY, ChatType, Mention, StatusUpdate, UpdateType
 
 import ai
 import database as db
@@ -12,7 +12,7 @@ from utils import handle_errors
 
 
 ############### GLOBALS ##################
-DEFAULTS = {"history": 50, "model": "gpt-4o-2024-08-06"} # twice cheaper than gpt-4o
+DEFAULTS = {"history": 50, "model": "gpt-4o-2024-08-06"}  # twice cheaper than gpt-4o
 BOT_USERNAME = "VasChatGPTBot"
 ##########################################
 
@@ -32,14 +32,21 @@ async def reset_history(update, context):
 
 
 @handle_errors
+async def pin_message(update, context):
+    pinned_message = update.message.pinned_message
+    await db.save_message_properties(context, pinned_message, {"pinned": True})
+
+
+@handle_errors
 async def respond(update, context):
     prompt = utils.message_text(update, context)
-    prompt = utils.prepend_username(update.message.from_user, prompt)
+    message = update.message
+    prompt = utils.prepend_username(message.from_user, prompt)
 
-    await db.save_message_to_db(update, context, "user", prompt)
+    await db.save_message(context, message, "user", prompt)
     content, tokens = await ai.generate_response(update, context)
-    await update.message.reply_text(content + f"\n({tokens} tokens)")
-    await db.save_message_to_db(update, context, "assistant", content)
+    reply_message = await message.reply_text(content + f"\n({tokens} tokens)")
+    await db.save_message(context, reply_message, "assistant", content)
 
 
 @handle_errors
@@ -65,7 +72,9 @@ async def settings(update, context):
         history = await db.get_setting(update, context, "history")
         conversation_history = await db.conversation_history(update, context)
         hisory_length = len(conversation_history)
-        await update.message.reply_text(f"model={model}, history={history} ({hisory_length} messages total).")
+        await update.message.reply_text(
+            f"model={model}, history={history} ({hisory_length} messages total)."
+        )
     else:
         await db.update_settings(update, context)
 
@@ -95,6 +104,11 @@ class BotReplyFilter(filters.MessageFilter):
         )
 
 
+async def debug(update, context):
+    print(update.message)
+    print("\n\n")
+
+
 if __name__ == "__main__":
     # Initialize the bot with the Telegram token
     application = (
@@ -114,9 +128,11 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("reset", reset_history))
     application.add_handler(CommandHandler("roll", dnd.roll))
 
-    # respond if being mentioned OR replied to OR in private chat
-    reply_filter = Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE
+    # respond to text messages if being mentioned OR replied to OR in private chat
+    reply_filter = (~UpdateType.EDITED) & TEXT & (Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE)
     application.add_handler(MessageHandler(reply_filter, respond))
+    application.add_handler(MessageHandler(StatusUpdate.PINNED_MESSAGE, pin_message))
+    # application.add_handler(MessageHandler(filters.ALL, debug))
 
     # Run the bot
     application.run_polling()

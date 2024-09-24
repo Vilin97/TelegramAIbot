@@ -23,18 +23,23 @@ REWORD_PROMPT = load_prompt("reword_prompt.txt")
 SUMMARY_PROMPT = load_prompt("summary_prompt.txt")
 
 
-async def generate_response(update, context):
+async def build_prompt(update, context):
     history = int(await db.get_setting(update, context, "history"))
-    model = await db.get_setting(update, context, "model")
-
     conversation_history = await db.conversation_history(update, context)
+    recent_messages = conversation_history[-history:]
+
     prompt = [{"role": "system", "content": SYSTEM_PROMPT}]
+    pinned_messages = await db.messages_with_property(update, context, "pinned", "true")
+    prompt += [msg for msg in pinned_messages if msg not in recent_messages]
     if len(conversation_history) > history:
         summary = await summarize(update, context)
-        # print(summary)
         prompt.append({"role": "assistant", "content": summary})
-    prompt += conversation_history[-history:]
+    prompt += recent_messages
+    return prompt
 
+async def generate_response(update, context):
+    model = await db.get_setting(update, context, "model")
+    prompt = await build_prompt(update, context)
     response = client.chat.completions.create(
         messages=prompt,
         model=model,
