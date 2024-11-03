@@ -2,7 +2,7 @@ AI Telegram bot for Dungeons \& Dragons, including custom short- and long-term m
 
 Example of a chat:
 
-![chat example](https://github.com/user-attachments/assets/29678895-13c7-4643-86da-30c94baab3a2){: width="50%"}
+![chat example](https://github.com/user-attachments/assets/29678895-13c7-4643-86da-30c94baab3a2|width=10)
 
 Available commands:
 
