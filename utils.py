@@ -23,8 +23,14 @@ def message_text(update, context):
     return stripped_text
 
 
+def get_username(user):
+    if user.username:
+        return user.username
+    else:
+        return user.first_name
+
 def prepend_username(user, message):
-    return f"{user.first_name} (@{user.username}): {message}"
+    return f"{user.first_name} (@{get_username(user)}): {message}"
 
 async def show_help(update: Update, context):
     help_text = (
