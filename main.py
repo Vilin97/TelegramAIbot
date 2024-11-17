@@ -39,14 +39,19 @@ async def pin_message(update, context):
 
 @handle_errors
 async def delete_message(update, context):
-    original_message = update.message.reply_to_message
-    await db.delete_message(context, original_message)
-    reply_message = update.message
-    await db.delete_message(context, reply_message)
-
     bot = context.bot
-    await bot.delete_message(chat_id=original_message.chat_id, message_id=original_message.message_id)
+    
+    reply_message = update.message
     await bot.delete_message(chat_id=reply_message.chat_id, message_id=reply_message.message_id)
+    
+    original_message = update.message.reply_to_message
+    
+    if original_message:
+        await db.delete_message(context, original_message)
+        await bot.delete_message(chat_id=original_message.chat_id, message_id=original_message.message_id)
+    else:
+        await update.message.reply_text("To delete a message reply to the message you wish to delete.")
+    
 
 @handle_errors
 async def respond(update, context):
@@ -137,7 +142,7 @@ if __name__ == "__main__":
         CommandHandler("imagine", reword_and_imagine, filters=REPLY)
     )
     application.add_handler(
-        CommandHandler("delete", delete_message, filters=REPLY)
+        CommandHandler("delete", delete_message)
     )
     application.add_handler(CommandHandler("imagine", imagine))
     application.add_handler(CommandHandler("settings", settings))
