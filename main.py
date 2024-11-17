@@ -12,7 +12,7 @@ from utils import handle_errors
 
 
 ############### GLOBALS ##################
-DEFAULTS = {"history": 50, "model": "gpt-4o-2024-08-06"}  # twice cheaper than gpt-4o
+DEFAULTS = {"history": 50, "model": "gpt-4o", "language": "English"}
 BOT_USERNAME = "VasChatGPTBot"
 ##########################################
 
@@ -70,10 +70,11 @@ async def settings(update, context):
     if update.message.text.strip() == "/settings":
         model = await db.get_setting(update, context, "model")
         history = await db.get_setting(update, context, "history")
+        language = await db.get_setting(update, context, "language")
         conversation_history = await db.conversation_history(update, context)
         hisory_length = len(conversation_history)
         await update.message.reply_text(
-            f"model={model}, history={history} ({hisory_length} messages total)."
+            f"language = {language}, model={model}, history={history} ({hisory_length} messages total)."
         )
     else:
         await db.update_settings(update, context)

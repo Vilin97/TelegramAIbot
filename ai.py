@@ -28,7 +28,9 @@ async def build_prompt(update, context):
     conversation_history = await db.conversation_history(update, context)
     recent_messages = conversation_history[-history:]
 
-    prompt = [{"role": "system", "content": SYSTEM_PROMPT}]
+    language = await db.get_setting(update, context, "language")
+    system_prompt = SYSTEM_PROMPT + f"\nYou MUST respond in {language}."
+    prompt = [{"role": "system", "content": system_prompt}]
     pinned_messages = await db.messages_with_property(update, context, "pinned", "true")
     prompt += [msg for msg in pinned_messages if msg not in recent_messages]
     if len(conversation_history) > history:
