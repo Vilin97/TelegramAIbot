@@ -34,7 +34,7 @@ async def save_message(context, message, role, properties={}):
         await conn.execute(
             query,
             user.id,
-            get_username(user),
+            utils.get_username(user),
             chat_id,
             text,
             role,
