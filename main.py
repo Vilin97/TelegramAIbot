@@ -41,9 +41,12 @@ async def pin_message(update, context):
 async def delete_message(update, context):
     original_message = update.message.reply_to_message
     await db.delete_message(context, original_message)
-
     reply_message = update.message
     await db.delete_message(context, reply_message)
+
+    bot = context.bot
+    bot.delete_message(chat_id=update.original_message.chat_id, message_id=original_message.message_id)
+    bot.delete_message(chat_id=update.reply_message.chat_id, message_id=reply_message.message_id)
 
 @handle_errors
 async def respond(update, context):
