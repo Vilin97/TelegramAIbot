@@ -38,6 +38,12 @@ async def pin_message(update, context):
 
 
 @handle_errors
+async def delete_message(update, context):
+    message = update.message
+    await db.delete_message_with_id(update, context, message)
+
+
+@handle_errors
 async def respond(update, context):
     prompt = utils.message_text(update, context)
     message = update.message
@@ -128,7 +134,7 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("help", show_help))
     application.add_handler(CommandHandler("reset", reset_history))
     application.add_handler(CommandHandler("roll", dnd.roll))
-
+ 
     # respond to text messages if being mentioned OR replied to OR in private chat
     reply_filter = (~UpdateType.EDITED) & TEXT & (Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE)
     application.add_handler(MessageHandler(reply_filter, respond))

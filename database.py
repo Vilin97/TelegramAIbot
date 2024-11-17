@@ -74,6 +74,22 @@ async def messages_with_property(update, context, property_name, property_value)
 
     return [{"role": row["role"], "content": row["message"]} for row in rows]
 
+
+async def delete_message_with_id(update, context, message):
+    pool = context.bot_data["db_pool"]
+    chat_id = update.message.chat_id
+    message_id = message.id
+
+    query = """
+        DELETE
+        FROM chat_history
+        WHERE chat_id = $2 AND message_id = $3
+    """
+
+    async with pool.acquire() as conn:
+        await conn.execute(query, chat_id, message_id)
+
+
 async def conversation_history(update, context):
 
     pool = context.bot_data["db_pool"]
