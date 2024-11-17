@@ -83,7 +83,7 @@ async def delete_message(context, message):
     query = """
         DELETE 
         FROM chat_history
-        WHERE chat_id = $2 AND message_id = $3
+        WHERE chat_id = $1 AND message_id = $2
     """
 
     async with pool.acquire() as conn:
