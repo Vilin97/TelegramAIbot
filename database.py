@@ -1,4 +1,9 @@
-"""Functions to interact with the database."""
+"""Functions to interact with the database.
+
+Tables in the DB:
+- `chat_history` holds history of all chats
+- `chat_settings` holds the chat settings, like model name and history length
+"""
 
 import asyncpg
 import os

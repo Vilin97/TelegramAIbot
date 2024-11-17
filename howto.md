@@ -17,3 +17,7 @@
 - `heroku ps` to see dynos
 - `heroku ps:scale worker=1` to start up the worker dyno
 - `heroku ps:scale worker=0` to stop the worker dyno
+
+## Local development
+
+- `python main.py`  or whichever file has `run_polling`

@@ -66,7 +66,7 @@ async def reword_and_imagine(update, context):
 
 @handle_errors
 async def settings(update, context):
-    # if "/settings" called without args, show current settings
+    """If `/settings` is called without args, show current settings"""
     if update.message.text.strip() == "/settings":
         model = await db.get_setting(update, context, "model")
         history = await db.get_setting(update, context, "history")
