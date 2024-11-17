@@ -39,9 +39,11 @@ async def pin_message(update, context):
 
 @handle_errors
 async def delete_message(update, context):
-    message = update.message
-    await db.delete_message_with_id(update, context, message)
+    original_message = update.message.reply_to_message
+    await db.delete_message(context, original_message)
 
+    reply_message = update.message
+    await db.delete_message(context, reply_message)
 
 @handle_errors
 async def respond(update, context):
@@ -94,6 +96,7 @@ async def post_init(application):
 
     await application.bot.set_my_commands(
         [
+            ("delete", "Reply to a message with this command to delete it from the bot's brain."),
             ("imagine", "Generate an image, e.g. /imagine panda. Takes ~15 seconds."),
             ("roll", "Roll dice, e.g. /roll 2d6."),
             ("reset", "Reset the conversation history."),
@@ -129,6 +132,9 @@ if __name__ == "__main__":
     # application.add_handler(MessageHandler(filters.ALL, debug))
     application.add_handler(
         CommandHandler("imagine", reword_and_imagine, filters=REPLY)
+    )
+    application.add_handler(
+        CommandHandler("delete", delete_message, filters=REPLY)
     )
     application.add_handler(CommandHandler("imagine", imagine))
     application.add_handler(CommandHandler("settings", settings))
