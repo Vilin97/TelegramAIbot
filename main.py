@@ -45,8 +45,8 @@ async def delete_message(update, context):
     await db.delete_message(context, reply_message)
 
     bot = context.bot
-    bot.delete_message(chat_id=update.original_message.chat_id, message_id=original_message.message_id)
-    bot.delete_message(chat_id=update.reply_message.chat_id, message_id=reply_message.message_id)
+    bot.delete_message(chat_id=original_message.chat_id, message_id=original_message.message_id)
+    bot.delete_message(chat_id=reply_message.chat_id, message_id=reply_message.message_id)
 
 @handle_errors
 async def respond(update, context):
