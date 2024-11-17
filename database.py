@@ -8,7 +8,7 @@ Tables in the DB:
 import asyncpg
 import os
 import json
-
+from utils import get_username
 
 async def init_db():
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -34,7 +34,7 @@ async def save_message(context, message, role, properties={}):
         await conn.execute(
             query,
             user.id,
-            utils.get_username(user),
+            get_username(user),
             chat_id,
             text,
             role,
