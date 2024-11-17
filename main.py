@@ -126,6 +126,7 @@ if __name__ == "__main__":
     )
 
     # Add handlers
+    # application.add_handler(MessageHandler(filters.ALL, debug))
     application.add_handler(
         CommandHandler("imagine", reword_and_imagine, filters=REPLY)
     )
@@ -139,7 +140,6 @@ if __name__ == "__main__":
     reply_filter = (~UpdateType.EDITED) & TEXT & (Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE)
     application.add_handler(MessageHandler(reply_filter, respond))
     application.add_handler(MessageHandler(StatusUpdate.PINNED_MESSAGE, pin_message))
-    # application.add_handler(MessageHandler(filters.ALL, debug))
 
     # Run the bot
     application.run_polling()

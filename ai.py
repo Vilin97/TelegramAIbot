@@ -77,7 +77,7 @@ async def imagine(update, context, prompt):
     chat_id = update.effective_chat.id
     bot = context.bot
 
-    generating = await update.message.reply_text("Генерирую изображение...")
+    generating = await update.message.reply_text("Generating an image...")
     try:
         await bot.send_chat_action(chat_id=chat_id, action="upload_photo")
         response = client.images.generate(
@@ -90,7 +90,7 @@ async def imagine(update, context, prompt):
         revised_prompt = response.data[0].revised_prompt
         await update.message.reply_photo(image_url, caption=revised_prompt)
     except Exception as e:
-        await update.message.reply_text("Я не смог сгенерировать изображение.")
+        await update.message.reply_text("I could not generate your image.")
     finally:
         await bot.delete_message(chat_id=chat_id, message_id=generating.message_id)
 
