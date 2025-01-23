@@ -1,9 +1,8 @@
-"""Utility functions for the bot."""
-
-from telegram import Update
+# utils.py
+import re
 import logging
 from functools import wraps
-import re
+
 
 def handle_errors(func):
     @wraps(func)
@@ -15,30 +14,29 @@ def handle_errors(func):
     return wrapper
 
 
-def message_text(update, context):
-    message_text = update.message.text
-    bot_username = context.bot.username
-    stripped_text = re.sub(r'/\S+', '', message_text)
-    stripped_text = re.sub(rf'@{bot_username}', '', stripped_text).strip()
-    return stripped_text
+def message_text(message, bot):
+    content = message.content
+    bot_username = bot.user.name
+    content = re.sub(rf'@\b{bot_username}\b', '', content).strip()
+    return content
 
 
 def get_username(user):
-    if user.username:
-        return user.username
-    else:
-        return user.first_name
+    return user.name
+
 
 def prepend_username(user, message):
-    return f"{user.first_name} (@{get_username(user)}): {message}"
+    return f"{user.display_name} ({get_username(user)}): {message}"
 
-async def show_help(update: Update, context):
+
+async def show_help(ctx):
     help_text = (
-        "/help - Show available commands and their descriptions"
-        "/imagine <prompt> - Generate an image based on prompt\n"
-        "/ai <message> - Start a conversation with Компуктер\n"
-        f"/settings key=value - Update model or history length (e.g. /settings model=gpt-4o /settings history=30). /settings without key and value will print the current settings.\n"
-        "/reset - Reset the conversation history\n"
-        "/roll XdY - Roll X dice with Y sides (e.g. /roll 2d6)\n"
+        "!help - Show available commands and their descriptions\n"
+        "!imagine <prompt> - Generate an image based on prompt\n"
+        "!settings key=value - "
+        "Update model or history length (e.g. !settings model=gpt-4o)\n"
+        "!reset - Reset the conversation history\n"
+        "!roll XdY - Roll X dice with Y sides (e.g. !roll 2d6)\n"
+        "!delete - Reply to a message with this command to delete it\n"
     )
-    await update.message.reply_text(help_text)
+    await ctx.reply(help_text)

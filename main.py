@@ -1,159 +1,119 @@
-import logging
+# main.py
 import os
-
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
-from telegram.ext.filters import TEXT, REPLY, ChatType, Mention, StatusUpdate, UpdateType
-
+import logging
+from discord.ext import commands
 import ai
 import database as db
 import dnd
 import utils
-from utils import handle_errors
-
 
 ############### GLOBALS ##################
 DEFAULTS = {"history": 50, "model": "gpt-4o", "language": "English"}
+BOT_PREFIX = "!"
 BOT_USERNAME = "VasChatGPTBot"
 ##########################################
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
-)
+# Set up logging
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING)
+
+# Initialize bot
+intents = discord.Intents.default()
+intents.messages = True
+bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
 
-@handle_errors
-async def show_help(update, context):
-    await utils.show_help(update, context)
-
-
-@handle_errors
-async def reset_history(update, context):
-    await db.reset_history(update, context)
-
-
-@handle_errors
-async def pin_message(update, context):
-    pinned_message = update.message.pinned_message
-    await db.save_message_properties(context, pinned_message, {"pinned": True})
-
-
-@handle_errors
-async def delete_message(update, context):
-    bot = context.bot
-    
-    reply_message = update.message
-    await bot.delete_message(chat_id=reply_message.chat_id, message_id=reply_message.message_id)
-    
-    original_message = update.message.reply_to_message
-    
-    if original_message:
-        await db.delete_message(context, original_message)
-        await bot.delete_message(chat_id=original_message.chat_id, message_id=original_message.message_id)
-    else:
-        await update.message.reply_text("To delete a message reply to the message you wish to delete.")
-    
-
-@handle_errors
-async def respond(update, context):
-    prompt = utils.message_text(update, context)
-    message = update.message
-    prompt = utils.prepend_username(message.from_user, prompt)
-
-    await db.save_message(context, message, "user", prompt)
-    content, tokens = await ai.generate_response(update, context)
-    reply_message = await message.reply_text(content + f"\n({tokens} tokens)")
-    await db.save_message(context, reply_message, "assistant", content)
-
-
-@handle_errors
-async def imagine(update, context):
-    prompt = utils.message_text(update, context)
-    if prompt:
-        await ai.imagine(update, context, prompt)
-    else:
-        await update.message.reply_text("Please provide a prompt for the image.")
-
-
-@handle_errors
-async def reword_and_imagine(update, context):
-    prompt = await ai.reword(update, context)
-    await ai.imagine(update, context, prompt)
-
-
-@handle_errors
-async def settings(update, context):
-    """If `/settings` is called without args, show current settings"""
-    if update.message.text.strip() == "/settings":
-        model = await db.get_setting(update, context, "model")
-        history = await db.get_setting(update, context, "history")
-        language = await db.get_setting(update, context, "language")
-        conversation_history = await db.conversation_history(update, context)
-        hisory_length = len(conversation_history)
-        await update.message.reply_text(
-            f"language = {language}, model={model}, history={history} ({hisory_length} messages total)."
-        )
-    else:
-        await db.update_settings(update, context)
-
-
-@handle_errors
-async def post_init(application):
+# Post init setup
+@bot.event
+async def on_ready():
     pool = await db.init_db()
-    application.bot_data["db_pool"] = pool
-    application.bot_data["defaults"] = DEFAULTS
+    bot.defaults = DEFAULTS
+    bot.db_pool = pool
+    print(f"Logged in as {bot.user.name}")
 
-    await application.bot.set_my_commands(
-        [
-            ("delete", "Reply to a message with this command to delete it from the bot's brain."),
-            ("imagine", "Generate an image, e.g. /imagine panda. Takes ~15 seconds."),
-            ("roll", "Roll dice, e.g. /roll 2d6."),
-            ("reset", "Reset the conversation history."),
-            ("help", "Show available commands and their descriptions."),
-            ("settings", "Update model or history length, e.g. /settings history=30."),
-        ]
-    )
+############## COMMANDS ##################
 
 
-class BotReplyFilter(filters.MessageFilter):
-    def filter(self, message):
-        return (
-            message.reply_to_message
-            and message.reply_to_message.from_user.username == BOT_USERNAME
+@bot.command(name="help")
+async def show_help(ctx):
+    """Show available commands and their descriptions"""
+    await utils.show_help(ctx)
+
+
+@bot.command(name="reset")
+async def reset_history(ctx):
+    """Reset the conversation history"""
+    await db.reset_history(ctx)
+
+
+@bot.command(name="delete")
+async def delete_message(ctx):
+    """Delete a message from the bot's brain"""
+    if ctx.message.reference:
+        ref_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        await db.delete_message(ctx, ref_msg)
+        await ref_msg.delete()
+        await ctx.message.delete()
+    else:
+        await ctx.reply("Reply to a message you wish to delete.")
+
+
+@bot.command(name="imagine")
+async def imagine(ctx, *, prompt=None):
+    """Generate an image from a prompt"""
+    if prompt:
+        await ai.imagine(ctx, prompt)
+    else:
+        await ctx.reply("Please provide a prompt for the image.")
+
+
+@bot.command(name="settings")
+async def settings(ctx, *, key_value=None):
+    """View or update settings"""
+    if not key_value:
+        model = await db.get_setting(ctx, "model")
+        history = await db.get_setting(ctx, "history")
+        language = await db.get_setting(ctx, "language")
+        conversation_history = await db.conversation_history(ctx)
+        history_length = len(conversation_history)
+        await ctx.reply(
+            f"language = {language}, model = {model}, history = {history} "
+            f"({history_length} messages total)."
         )
+    else:
+        await db.update_settings(ctx, key_value)
 
 
-async def debug(update, context):
-    print(update.message)
-    print("\n\n")
+@bot.command(name="roll")
+async def roll(ctx, dice: str):
+    """Roll dice (e.g. !roll 2d6)"""
+    await ctx.reply(dnd.roll(dice))
 
 
+@bot.command(name="respond")
+async def respond(ctx, *, prompt=None):
+    """Respond to user messages"""
+    if not prompt:
+        await ctx.reply("Please provide a message.")
+        return
+    prompt = utils.prepend_username(ctx.author, prompt)
+    await db.save_message(ctx, ctx.message, "user", prompt)
+    content, tokens = await ai.generate_response(ctx, prompt)
+    reply = await ctx.reply(content + f"\n({tokens} tokens)")
+    await db.save_message(ctx, reply, "assistant", content)
+
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if bot.user.mentioned_in(message):
+        ctx = await bot.get_context(message)
+        await respond(ctx, prompt=utils.message_text(message, bot))
+    else:
+        await bot.process_commands(message)
+
+# Run the bot
 if __name__ == "__main__":
-    # Initialize the bot with the Telegram token
-    application = (
-        ApplicationBuilder()
-        .token(os.getenv("TELEGRAM_TOKEN"))
-        .post_init(post_init)
-        .build()
-    )
+    bot.run(os.getenv("DISCORD_TOKEN"))
 
-    # Add handlers
-    # application.add_handler(MessageHandler(filters.ALL, debug))
-    application.add_handler(
-        CommandHandler("imagine", reword_and_imagine, filters=REPLY)
-    )
-    application.add_handler(
-        CommandHandler("delete", delete_message)
-    )
-    application.add_handler(CommandHandler("imagine", imagine))
-    application.add_handler(CommandHandler("settings", settings))
-    application.add_handler(CommandHandler("help", show_help))
-    application.add_handler(CommandHandler("reset", reset_history))
-    application.add_handler(CommandHandler("roll", dnd.roll))
- 
-    # respond to text messages if being mentioned OR replied to OR in private chat
-    reply_filter = (~UpdateType.EDITED) & TEXT & (Mention(BOT_USERNAME) | BotReplyFilter() | ChatType.PRIVATE)
-    application.add_handler(MessageHandler(reply_filter, respond))
-    application.add_handler(MessageHandler(StatusUpdate.PINNED_MESSAGE, pin_message))
-
-    # Run the bot
-    application.run_polling()
